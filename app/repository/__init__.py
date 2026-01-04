@@ -1,11 +1,7 @@
 import boto3
 from mypy_boto3_dynamodb import DynamoDBServiceResource, DynamoDBClient
 
-session = boto3.Session(
-    region_name="us-east-1",
-    aws_access_key_id="AKIA4WVWY5SE7S2U2Q5T",
-    aws_secret_access_key="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",
-)
+session = boto3.Session()
 
 # type alias to dynamodb client
 DynamoDBResource = DynamoDBServiceResource
