@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
 from app.models.expense import RequestStatus
@@ -7,7 +8,7 @@ from app.models import default_model_config, FieldAlias
 class Advance(BaseModel):
     id: str = FieldAlias("AdvanceID")
     user_id: str = FieldAlias("UserID")
-    amount: float = FieldAlias("Amount")
+    amount: Decimal = FieldAlias("Amount")
     description: str = FieldAlias("Description")
     purpose: str = FieldAlias("Purpose")
     status: RequestStatus = FieldAlias("Status")
@@ -34,7 +35,7 @@ class AdvancesFilterOptions(BaseModel):
 
 
 class AdvanceSummary(BaseModel):
-    approved: float
-    reconciled: float
-    pending: float
-    rejected: float
+    approved: Decimal
+    reconciled: Decimal
+    pending: Decimal
+    rejected: Decimal

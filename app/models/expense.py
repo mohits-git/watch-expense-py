@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
 from enum import Enum
@@ -13,7 +14,7 @@ class RequestStatus(str, Enum):
 
 class Bill(BaseModel):
     id: str = FieldAlias("BillID")
-    amount: float = FieldAlias("Amount")
+    amount: Decimal = FieldAlias("Amount")
     description: str = FieldAlias("Description")
     attachment_url: str = FieldAlias("AttachmentURL")
 
@@ -24,7 +25,7 @@ class Bill(BaseModel):
 class Expense(BaseModel):
     id: str = FieldAlias("ExpenseID")
     user_id: str = FieldAlias("UserID")
-    amount: float = FieldAlias("Amount")
+    amount: Decimal = FieldAlias("Amount")
     description: str = FieldAlias("Description")
     purpose: str = FieldAlias("Purpose")
     status: RequestStatus = FieldAlias("Status")
@@ -51,7 +52,7 @@ class ExpensesFilterOptions(BaseModel):
 
 
 class ExpenseSummary(BaseModel):
-    total_expenses: float
-    pending_expense: float
-    reimbursed_expense: float
-    rejected_expense: float
+    total_expenses: Decimal
+    pending_expense: Decimal
+    reimbursed_expense: Decimal
+    rejected_expense: Decimal
