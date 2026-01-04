@@ -31,10 +31,8 @@ class UserRepository():
         }
 
     def _parse_user_item(self, item: dict) -> User:
-        user_data = item
         try:
-            user = User.model_validate(user_data, by_alias=True)
-            return user
+            return User.model_validate(item, by_alias=True)
         except ValidationError as err:
             print("Error constructing the model from fetched data: ", err)
             raise err
@@ -57,33 +55,25 @@ class UserRepository():
         primary_key = self._get_user_primary_key(user.id)
         lookup_pk = self._get_lookup_primary_key(user.email)
         with self._table.batch_writer() as batch:
-            batch.put_item(
-                Item={
-                    **primary_key,
-                    **user.model_dump(by_alias=True),
-                },
-            )
-            batch.put_item(
-                Item={
-                    **lookup_pk,
-                    "UserID": user.id,
-                },
-            )
+            batch.put_item(Item={
+                **primary_key,
+                **user.model_dump(by_alias=True),
+            })
+            batch.put_item(Item={
+                **lookup_pk,
+                "UserID": user.id,
+            })
 
     def get(self, user_id: str) -> User | None:
         primary_key = self._get_user_primary_key(user_id)
-        response = self._table.get_item(Key={
-            **primary_key
-        })
+        response = self._table.get_item(Key=primary_key)
         if not response or "Item" not in response:
             return None
         return self._parse_user_item(response["Item"])
 
     def get_by_email(self, email: str) -> User | None:
         lookup_pk = self._get_lookup_primary_key(email)
-        response = self._table.get_item(Key={
-            **lookup_pk
-        })
+        response = self._table.get_item(Key=lookup_pk)
         if not response or "Item" not in response:
             return None
         user_id = str(response["Item"]["UserID"])
@@ -92,8 +82,7 @@ class UserRepository():
     def get_all(self) -> list[User]:
         response = self._table.query(
             KeyConditionExpression=Key("PK").eq(
-                "USER") & Key("SK").begins_with("PROFILE#")
-        )
+                "USER") & Key("SK").begins_with("PROFILE#"))
         if not response or "Items" not in response:
             return []
         users = [
@@ -136,7 +125,6 @@ class UserRepository():
             by_alias=True, exclude=exclude_fields)
         update_expr, expr_names, expr_values = utils.build_update_expression(
             to_update)
-        expr_values = utils.python_to_dynamo(expr_values)
 
         primary_key = self._get_user_primary_key(user.id)
         transaction_items.append({
@@ -145,7 +133,7 @@ class UserRepository():
                 "Key": utils.python_to_dynamo(primary_key),
                 "UpdateExpression": update_expr,
                 "ExpressionAttributeNames": expr_names,
-                "ExpressionAttributeValues": expr_values,
+                "ExpressionAttributeValues": utils.python_to_dynamo(expr_values),
             }
         })
 
