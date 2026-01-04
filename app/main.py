@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from uvicorn import run
 
 
 app = FastAPI()
@@ -10,3 +11,12 @@ def health_check():
 
 
 # initialization and setup...
+
+
+def main():
+    print("Running server with Uvicorn")
+    run(app)
+
+
+if __name__ == "__main__":
+    main()
