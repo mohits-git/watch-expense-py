@@ -15,13 +15,13 @@ class DepartmentRepository():
         self._client = ddb_client
         self._table = ddb_resource.Table(table_name)
         self._table_name = table_name
-        self._PK = "DEPARTMENT"
-        self._SK_prefix = "DETAILS#"
+        self._pk = "DEPARTMENT"
+        self._sk_prefix = "DETAILS#"
 
     def _get_department_primary_key(self, dep_id: str) -> dict:
         return {
-            "PK": "DEPARTMENT",
-            "SK": f"DETAILS#{dep_id}",
+            "PK": self._pk,
+            "SK": f"{self._sk_prefix}{dep_id}",
         }
 
     def _parse_department_item(self, item: dict) -> Department:
@@ -53,7 +53,7 @@ class DepartmentRepository():
     def get_all(self) -> list[Department]:
         response = self._table.query(
             KeyConditionExpression=Key("PK").eq(
-                self._PK) & Key("SK").begins_with(self._SK_prefix)
+                self._pk) & Key("SK").begins_with(self._sk_prefix)
         )
         if not response or "Items" not in response:
             return []

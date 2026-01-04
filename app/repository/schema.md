@@ -110,7 +110,7 @@
   ------------------------------------------------------------*/
   {
     "PK": "PROJECT",
-    "SK": "PROJECT#DepID#ProjectID",
+    "SK": "DETAILS#DepID#ProjectID",
     "ProjectID": "uuid",
     "Name": "project_name",
     "Description": "description",

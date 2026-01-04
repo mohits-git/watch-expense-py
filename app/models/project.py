@@ -11,6 +11,7 @@ class Project(BaseModel):
     budget: Decimal = FieldAlias("Budget")
     start_date: int = FieldAlias("StartDate")
     end_date: int = FieldAlias("EndDate")
+    department_id: str = FieldAlias("DepartmentID")
     created_at: Annotated[int, BeforeValidator(
         lambda x: int(x))] = FieldAlias("CreatedAt", default=0)
     updated_at: Annotated[int, BeforeValidator(
