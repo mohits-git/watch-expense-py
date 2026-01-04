@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from typing import Annotated
+from pydantic import BaseModel, BeforeValidator
 from app.models import default_model_config, FieldAlias
 
 
@@ -9,8 +10,11 @@ class Project(BaseModel):
     budget: float = FieldAlias("Budget")
     start_date: int = FieldAlias("StartDate")
     end_date: int = FieldAlias("EndDate")
-    created_at: int = FieldAlias("CreatedAt")
-    updated_at: int = FieldAlias("UpdatedAt")
+    created_at: Annotated[int, BeforeValidator(
+        lambda x: int(x))] = FieldAlias("CreatedAt", default=0)
+    updated_at: Annotated[int, BeforeValidator(
+        lambda x: int(x))] = FieldAlias("UpdatedAt", default=0)
+
 
     # pydantic config
     model_config = default_model_config()

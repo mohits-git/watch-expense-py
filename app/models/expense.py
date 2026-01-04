@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from typing import Annotated
+from pydantic import BaseModel, BeforeValidator
 from enum import Enum
 from app.models import default_model_config, FieldAlias
 
 
-class RequestStatus(Enum):
+class RequestStatus(str, Enum):
     Pending = "PENDING"
     Approved = "APPROVED"
     Rejected = "REJECTED"
@@ -33,8 +34,10 @@ class Expense(BaseModel):
     reviewed_by: str | None = FieldAlias("ReviewedBy", default=None)
     reviewed_at: int | None = FieldAlias("ReviewedAt", default=None)
     bills: list[Bill] = FieldAlias("Bills", default_factory=list)
-    created_at: int = FieldAlias("CreatedAt")
-    updated_at: int = FieldAlias("UpdatedAt")
+    created_at: Annotated[int, BeforeValidator(
+        lambda x: int(x))] = FieldAlias("CreatedAt", default=0)
+    updated_at: Annotated[int, BeforeValidator(
+        lambda x: int(x))] = FieldAlias("UpdatedAt", default=0)
 
     # pydantic config
     model_config = default_model_config()

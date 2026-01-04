@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from typing import Annotated
+from pydantic import BaseModel, BeforeValidator
 from app.models.expense import RequestStatus
 from app.models import default_model_config, FieldAlias
 
@@ -16,8 +17,10 @@ class Advance(BaseModel):
     approved_at: int | None = FieldAlias("ApprovedAt", default=None)
     reviewed_by: str | None = FieldAlias("ReviewedBy", default=None)
     reviewed_at: int | None = FieldAlias("ReviewedAt", default=None)
-    created_at: int = FieldAlias("CreatedAt")
-    updated_at: int = FieldAlias("UpdatedAt")
+    created_at: Annotated[int, BeforeValidator(
+        lambda x: int(x))] = FieldAlias("CreatedAt", default=0)
+    updated_at: Annotated[int, BeforeValidator(
+        lambda x: int(x))] = FieldAlias("UpdatedAt", default=0)
 
     # pydantic config
     model_config = default_model_config()
