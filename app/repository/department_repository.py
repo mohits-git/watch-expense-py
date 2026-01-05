@@ -3,16 +3,14 @@ import time
 
 from pydantic import ValidationError
 from app.models.department import Department
-from app.repository import DynamoDBClient, DynamoDBResource, utils
+from app.repository import DynamoDBResource, utils
 from boto3.dynamodb.conditions import Key
 
 
 class DepartmentRepository():
     def __init__(self,
-                 ddb_client: DynamoDBClient,
                  ddb_resource: DynamoDBResource,
                  table_name: str):
-        self._client = ddb_client
         self._table = ddb_resource.Table(table_name)
         self._table_name = table_name
         self._pk = "DEPARTMENT"

@@ -5,17 +5,15 @@ import time
 from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef
 from pydantic import ValidationError
 from app.models.expense import Expense, ExpensesFilterOptions, RequestStatus
-from app.repository import DynamoDBClient, DynamoDBResource
+from app.repository import DynamoDBResource
 from boto3.dynamodb.conditions import Attr, Key
 from app.repository import utils
 
 
 class ExpenseRepository():
     def __init__(self,
-                 ddb_client: DynamoDBClient,
                  ddb_resource: DynamoDBResource,
                  table_name: str):
-        self._client = ddb_client
         self._table = ddb_resource.Table(table_name)
         self._table_name = table_name
         self._pk = "EXPENSE"

@@ -1,22 +1,5 @@
-from boto3.dynamodb.types import TypeSerializer, TypeDeserializer
 from mypy_boto3_dynamodb.service_resource import Table
 from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef
-
-
-def dynamo_to_python(dynamo_object: dict) -> dict:
-    deserializer = TypeDeserializer()
-    return {
-        k: deserializer.deserialize(v)
-        for k, v in dynamo_object.items()
-    }
-
-
-def python_to_dynamo(python_object: dict) -> dict:
-    serializer = TypeSerializer()
-    return {
-        k: serializer.serialize(v)
-        for k, v in python_object.items()
-    }
 
 
 def build_update_expression(updates: dict) -> tuple[str, dict, dict]:

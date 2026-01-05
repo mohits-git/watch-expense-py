@@ -4,17 +4,15 @@ import time
 from mypy_boto3_dynamodb.type_defs import TransactWriteItemTypeDef
 from pydantic import ValidationError
 from app.models.project import Project
-from app.repository import DynamoDBClient, DynamoDBResource
+from app.repository import DynamoDBResource
 from boto3.dynamodb.conditions import Key
 from app.repository import utils
 
 
 class ProjectRepository():
     def __init__(self,
-                 ddb_client: DynamoDBClient,
                  ddb_resource: DynamoDBResource,
                  table_name: str):
-        self._client = ddb_client
         self._table = ddb_resource.Table(table_name)
         self._table_name = table_name
         self._pk = "PROJECT"
@@ -127,27 +125,28 @@ class ProjectRepository():
             {
                 "Delete": {
                     "TableName": self._table_name,
-                    "Key": utils.python_to_dynamo(primary_key),
+                    "Key": primary_key,
                 }
             },
             {
                 "Update": {
                     "TableName": self._table_name,
-                    "Key": utils.python_to_dynamo(lookup_pk),
+                    "Key": lookup_pk,
                     "UpdateExpression": update_expr,
                     "ExpressionAttributeNames": expr_names,
-                    "ExpressionAttributeValues": utils.python_to_dynamo(expr_values),
+                    "ExpressionAttributeValues": expr_values,
                 }
             },
             {
                 "Put": {
                     "TableName": self._table_name,
                     "Item": {
-                        **utils.python_to_dynamo(new_primary_key),
-                        **utils.python_to_dynamo(project.model_dump(by_alias=True))
+                        **new_primary_key,
+                        **project.model_dump(by_alias=True)
                     }
                 }
             }
         ]
 
-        self._client.transact_write_items(TransactItems=transaction_items)
+        self._table.meta.client.transact_write_items(
+            TransactItems=transaction_items)

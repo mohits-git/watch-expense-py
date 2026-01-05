@@ -4,17 +4,15 @@ import time
 from mypy_boto3_dynamodb.type_defs import TransactWriteItemTypeDef
 from pydantic import ValidationError
 from app.models.user import User
-from app.repository import DynamoDBClient, DynamoDBResource
+from app.repository import DynamoDBResource
 from boto3.dynamodb.conditions import Key
 from app.repository import utils
 
 
 class UserRepository():
     def __init__(self,
-                 ddb_client: DynamoDBClient,
                  ddb_resource: DynamoDBResource,
                  table_name: str):
-        self._client = ddb_client
         self._table = ddb_resource.Table(table_name)
         self._table_name = table_name
 
@@ -130,10 +128,10 @@ class UserRepository():
         transaction_items.append({
             "Update": {
                 "TableName": self._table_name,
-                "Key": utils.python_to_dynamo(primary_key),
+                "Key": primary_key,
                 "UpdateExpression": update_expr,
                 "ExpressionAttributeNames": expr_names,
-                "ExpressionAttributeValues": utils.python_to_dynamo(expr_values),
+                "ExpressionAttributeValues": expr_values,
             }
         })
 
@@ -142,22 +140,22 @@ class UserRepository():
             transaction_items.append({
                 "Delete": {
                     "TableName": self._table_name,
-                    "Key": utils.python_to_dynamo(lookup_pk),
+                    "Key": lookup_pk,
                 }
             })
             new_lookup_pk = self._get_lookup_primary_key(user.email)
             transaction_items.append({
                 "Put": {
                     "TableName": self._table_name,
-                    "Item": utils.python_to_dynamo(python_object={
+                    "Item": {
                         **new_lookup_pk,
                         "UserID": user.id
-                    }),
+                    },
                 }
             })
 
         try:
-            self._client.transact_write_items(
+            self._table.meta.client.transact_write_items(
                 TransactItems=transaction_items)
         except self._table.meta.client.exceptions.TransactionCanceledException as err:
             print("Transaction err: ", err)
