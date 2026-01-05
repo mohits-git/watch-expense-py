@@ -1,19 +1,19 @@
 import uuid
 import time
 
-from mypy_boto3_dynamodb.type_defs import TransactWriteItemTypeDef
 from pydantic import ValidationError
+from types_aiobotocore_dynamodb.service_resource import Table
+from types_aiobotocore_dynamodb.type_defs import TransactWriteItemTypeDef
 from app.models.project import Project
-from app.repository import DynamoDBResource
 from boto3.dynamodb.conditions import Key
 from app.repository import utils
 
 
 class ProjectRepository:
     def __init__(self,
-                 ddb_resource: DynamoDBResource,
+                 ddb_table: Table,
                  table_name: str):
-        self._table = ddb_resource.Table(table_name)
+        self._table = ddb_table
         self._table_name = table_name
         self._pk = "PROJECT"
         self._sk_prefix = "DETAILS#"
@@ -38,15 +38,15 @@ class ProjectRepository:
             print("Error constructing the model from fetched data: ", err)
             raise err
 
-    def _get_dep_id_by_project_id(self, project_id: str) -> str | None:
+    async def _get_dep_id_by_project_id(self, project_id: str) -> str | None:
         primary_key = self._get_project_lookup_primary_key(project_id)
-        response = self._table.get_item(
+        response = await self._table.get_item(
             Key=primary_key)
         if not response or "Item" not in response:
             return None
         return str(response["Item"]["DepartmentID"])
 
-    def save(self, project: Project) -> None:
+    async def save(self, project: Project) -> None:
         if not project.id:
             project.id = str(uuid.uuid4())
         if not project.created_at:
@@ -55,28 +55,28 @@ class ProjectRepository:
         primary_key = self._get_project_primary_key(
             project.department_id, project.id)
         lookup_pk = self._get_project_lookup_primary_key(project.id)
-        with self._table.batch_writer() as batch:
-            batch.put_item(Item={
+        async with self._table.batch_writer() as batch:
+            await batch.put_item(Item={
                 **primary_key,
                 **project.model_dump(by_alias=True),
             })
-            batch.put_item(Item={
+            await batch.put_item(Item={
                 **lookup_pk,
                 "DepartmentID": project.department_id,
             })
 
-    def get(self, project_id: str) -> Project | None:
-        department_id = self._get_dep_id_by_project_id(project_id)
+    async def get(self, project_id: str) -> Project | None:
+        department_id = await self._get_dep_id_by_project_id(project_id)
         if not department_id:
             return None
         primary_key = self._get_project_primary_key(department_id, project_id)
-        response = self._table.get_item(Key=primary_key)
+        response = await self._table.get_item(Key=primary_key)
         if not response or "Item" not in response:
             return None
         return self._parse_project_item(response["Item"])
 
-    def get_all(self) -> list[Project]:
-        response = self._table.query(
+    async def get_all(self) -> list[Project]:
+        response = await self._table.query(
             KeyConditionExpression=Key("PK").eq(
                 self._pk) & Key("SK").begins_with(self._sk_prefix)
         )
@@ -88,8 +88,8 @@ class ProjectRepository:
         ]
         return projects
 
-    def update(self, project: Project) -> None:
-        existing_project = self.get(project.id)
+    async def update(self, project: Project) -> None:
+        existing_project = await self.get(project.id)
         if existing_project is None:
             raise Exception(f"Project with project_id: {project.id} not found")
         prev_dep_id = existing_project.department_id
@@ -105,7 +105,7 @@ class ProjectRepository:
                 to_update)
             primary_key = self._get_project_primary_key(
                 prev_dep_id, project.id)
-            self._table.update_item(
+            await self._table.update_item(
                 Key=primary_key,
                 UpdateExpression=update_expr,
                 ExpressionAttributeNames=expr_names,
@@ -148,5 +148,5 @@ class ProjectRepository:
             }
         ]
 
-        self._table.meta.client.transact_write_items(
+        await self._table.meta.client.transact_write_items(
             TransactItems=transaction_items)

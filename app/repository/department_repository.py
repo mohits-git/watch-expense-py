@@ -2,16 +2,17 @@ import uuid
 import time
 
 from pydantic import ValidationError
+from types_aiobotocore_dynamodb.service_resource import Table
 from app.models.department import Department
-from app.repository import DynamoDBResource, utils
+from app.repository import utils
 from boto3.dynamodb.conditions import Key
 
 
 class DepartmentRepository:
     def __init__(self,
-                 ddb_resource: DynamoDBResource,
+                 ddb_table: Table,
                  table_name: str):
-        self._table = ddb_resource.Table(table_name)
+        self._table = ddb_table
         self._table_name = table_name
         self._pk = "DEPARTMENT"
         self._sk_prefix = "DETAILS#"
@@ -29,27 +30,27 @@ class DepartmentRepository:
             print("Error constructing the model from fetched data: ", err)
             raise err
 
-    def save(self, department: Department) -> None:
+    async def save(self, department: Department) -> None:
         if not department.id:
             department.id = str(uuid.uuid4())
         if not department.created_at:
             department.created_at = int(time.time_ns()//1e6)
             department.updated_at = department.created_at
         primary_key = self._get_department_primary_key(department.id)
-        self._table.put_item(Item={
+        await self._table.put_item(Item={
             **primary_key,
             **department.model_dump(by_alias=True)
         })
 
-    def get(self, department_id: str) -> Department | None:
+    async def get(self, department_id: str) -> Department | None:
         primary_key = self._get_department_primary_key(department_id)
-        response = self._table.get_item(Key=primary_key)
+        response = await self._table.get_item(Key=primary_key)
         if not response or "Item" not in response:
             return None
         return self._parse_department_item(response["Item"])
 
-    def get_all(self) -> list[Department]:
-        response = self._table.query(
+    async def get_all(self) -> list[Department]:
+        response = await self._table.query(
             KeyConditionExpression=Key("PK").eq(
                 self._pk) & Key("SK").begins_with(self._sk_prefix)
         )
@@ -61,8 +62,8 @@ class DepartmentRepository:
         ]
         return departments
 
-    def update(self, department: Department) -> None:
-        existing_department = self.get(department.id)
+    async def update(self, department: Department) -> None:
+        existing_department = await self.get(department.id)
         if not existing_department:
             raise Exception(f"Department with department_id: {
                             department.id} not found")
@@ -75,7 +76,7 @@ class DepartmentRepository:
             to_update)
 
         primary_key = self._get_department_primary_key(department.id)
-        self._table.update_item(
+        await self._table.update_item(
             Key=primary_key,
             UpdateExpression=update_expr,
             ExpressionAttributeNames=expr_names,

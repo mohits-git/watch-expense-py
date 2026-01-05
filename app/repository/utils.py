@@ -1,5 +1,5 @@
-from mypy_boto3_dynamodb.service_resource import Table
-from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef
+from types_aiobotocore_dynamodb.service_resource import Table
+from types_aiobotocore_dynamodb.type_defs import QueryInputTableQueryTypeDef
 
 
 def build_update_expression(updates: dict) -> tuple[str, dict, dict]:
@@ -26,7 +26,7 @@ def build_update_expression(updates: dict) -> tuple[str, dict, dict]:
     )
 
 
-def offset_query(
+async def offset_query(
         table: Table,
         query_input: QueryInputTableQueryTypeDef,
         page: int,
@@ -48,7 +48,7 @@ def offset_query(
         if last_evaluated_key is not None:
             query_input["ExclusiveStartKey"] = last_evaluated_key
         query_input["Limit"] = limit
-        result = table.query(**query_input)
+        result = await table.query(**query_input)
         if "LastEvaluatedKey" not in result or "Items" not in result:
             return None
         last_evaluated_key = result["LastEvaluatedKey"]

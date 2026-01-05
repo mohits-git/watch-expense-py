@@ -1,19 +1,19 @@
 import uuid
 import time
 
-from mypy_boto3_dynamodb.type_defs import TransactWriteItemTypeDef
 from pydantic import ValidationError
+from types_aiobotocore_dynamodb.service_resource import Table
+from types_aiobotocore_dynamodb.type_defs import TransactWriteItemTypeDef
 from app.models.user import User
-from app.repository import DynamoDBResource
 from boto3.dynamodb.conditions import Key
 from app.repository import utils
 
 
 class UserRepository:
     def __init__(self,
-                 ddb_resource: DynamoDBResource,
+                 ddb_table: Table,
                  table_name: str):
-        self._table = ddb_resource.Table(table_name)
+        self._table = ddb_table
         self._table_name = table_name
 
     def _get_user_primary_key(self, user_id: str) -> dict:
@@ -35,16 +35,16 @@ class UserRepository:
             print("Error constructing the model from fetched data: ", err)
             raise err
 
-    def _get_email_by_id(self, user_id) -> str | None:
+    async def _get_email_by_id(self, user_id) -> str | None:
         primary_key = self._get_user_primary_key(user_id)
-        response = self._table.get_item(Key={
+        response = await self._table.get_item(Key={
             **primary_key
         }, ProjectionExpression="Email")
         if not response or "Item" not in response:
             return None
         return str(response["Item"]["Email"])
 
-    def save(self, user: User) -> None:
+    async def save(self, user: User) -> None:
         if not user.id:
             user.id = str(uuid.uuid4())
         if not user.created_at:
@@ -52,33 +52,33 @@ class UserRepository:
             user.updated_at = user.created_at
         primary_key = self._get_user_primary_key(user.id)
         lookup_pk = self._get_lookup_primary_key(user.email)
-        with self._table.batch_writer() as batch:
-            batch.put_item(Item={
+        async with self._table.batch_writer() as batch:
+            await batch.put_item(Item={
                 **primary_key,
                 **user.model_dump(by_alias=True),
             })
-            batch.put_item(Item={
+            await batch.put_item(Item={
                 **lookup_pk,
                 "UserID": user.id,
             })
 
-    def get(self, user_id: str) -> User | None:
+    async def get(self, user_id: str) -> User | None:
         primary_key = self._get_user_primary_key(user_id)
-        response = self._table.get_item(Key=primary_key)
+        response = await self._table.get_item(Key=primary_key)
         if not response or "Item" not in response:
             return None
         return self._parse_user_item(response["Item"])
 
-    def get_by_email(self, email: str) -> User | None:
+    async def get_by_email(self, email: str) -> User | None:
         lookup_pk = self._get_lookup_primary_key(email)
-        response = self._table.get_item(Key=lookup_pk)
+        response = await self._table.get_item(Key=lookup_pk)
         if not response or "Item" not in response:
             return None
         user_id = str(response["Item"]["UserID"])
-        return self.get(user_id)
+        return await self.get(user_id)
 
-    def get_all(self) -> list[User]:
-        response = self._table.query(
+    async def get_all(self) -> list[User]:
+        response = await self._table.query(
             KeyConditionExpression=Key("PK").eq(
                 "USER") & Key("SK").begins_with("PROFILE#"))
         if not response or "Items" not in response:
@@ -89,26 +89,26 @@ class UserRepository:
         ]
         return users
 
-    def delete(self, user_id: str) -> None:
-        email = self._get_email_by_id(user_id)
+    async def delete(self, user_id: str) -> None:
+        email = await self._get_email_by_id(user_id)
         if not email:
             raise Exception(f"User with user_id: {user_id} not found")
         primary_key = self._get_user_primary_key(user_id)
         lookup_pk = self._get_lookup_primary_key(email)
-        with self._table.batch_writer() as batch:
-            batch.delete_item(
+        async with self._table.batch_writer() as batch:
+            await batch.delete_item(
                 Key={
                     **primary_key
                 }
             )
-            batch.delete_item(
+            await batch.delete_item(
                 Key={
                     **lookup_pk
                 }
             )
 
-    def update(self, user: User) -> None:
-        existing_email = self._get_email_by_id(user.id)
+    async def update(self, user: User) -> None:
+        existing_email = await self._get_email_by_id(user.id)
         if not existing_email:
             raise Exception(f"User with user_id: {user.id} not found")
 
@@ -154,11 +154,5 @@ class UserRepository:
                 }
             })
 
-        try:
-            self._table.meta.client.transact_write_items(
-                TransactItems=transaction_items)
-        except self._table.meta.client.exceptions.TransactionCanceledException as err:
-            print("Transaction err: ", err)
-            for i, reason in enumerate(err.response["CancellationReasons"]):
-                print(f"Item {i} cancellation reason:", reason)
-            raise err
+        await self._table.meta.client.transact_write_items(
+            TransactItems=transaction_items)
