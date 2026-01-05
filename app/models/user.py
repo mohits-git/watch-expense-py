@@ -28,7 +28,7 @@ class User(BaseModel):
 
 
 class UserClaims(BaseModel):
-    id: str = FieldAlias("UserID")
+    user_id: str = FieldAlias("UserID")
     name: str = FieldAlias("Name")
     email: str = FieldAlias("Email")
     role: UserRole = FieldAlias("Role")
