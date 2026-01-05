@@ -1,13 +1,12 @@
 import pytest
-from app.repository import create_ddb_client, create_ddb_resource
+from app.repository import create_ddb_resource
 from app.repository.department_repository import DepartmentRepository
 
 
 @pytest.fixture
 def department_repository() -> DepartmentRepository:
-    ddb_client = create_ddb_client()
     ddb_resource = create_ddb_resource()
-    return DepartmentRepository(ddb_client, ddb_resource, "watch-expense-table")
+    return DepartmentRepository(ddb_resource, "watch-expense-table")
 
 
 class TestDepartmentRepository:

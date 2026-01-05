@@ -2,15 +2,14 @@ import pytest
 import time
 from decimal import Decimal
 from app.models.project import Project
-from app.repository import create_ddb_client, create_ddb_resource
+from app.repository import create_ddb_resource
 from app.repository.project_repository import ProjectRepository
 
 
 @pytest.fixture
 def project_repository() -> ProjectRepository:
-    ddb_client = create_ddb_client()
     ddb_resource = create_ddb_resource()
-    return ProjectRepository(ddb_client, ddb_resource, "watch-expense-table")
+    return ProjectRepository(ddb_resource, "watch-expense-table")
 
 
 class TestProjectRepository:
