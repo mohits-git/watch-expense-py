@@ -1,41 +1,50 @@
+from decimal import Decimal
 import pytest
-from app.repository import create_ddb_resource
+import pytest_asyncio
+from app.models.department import Department
+from app.repository import get_boto3_session
 from app.repository.department_repository import DepartmentRepository
 
 
-@pytest.fixture
-def department_repository() -> DepartmentRepository:
-    ddb_resource = create_ddb_resource()
-    return DepartmentRepository(ddb_resource, "watch-expense-table")
+@pytest_asyncio.fixture
+async def department_repository():
+    session = get_boto3_session()
+    async with session.resource("dynamodb") as ddb_resource:
+        ddb_table = await ddb_resource.Table("watch-expense-table")
+        yield DepartmentRepository(ddb_table, "watch-expense-table")
 
 
 class TestDepartmentRepository:
-    def test_get_all(self, department_repository):
-        # print(department_repository.get_all())
+    @pytest.mark.asyncio
+    async def test_get_all(self, department_repository):
+        print(await department_repository.get_all())
         # TODO: tests
         pass
 
-    def test_save(self, department_repository):
-        # department = Department(
-        #     id="d7e4071d-8ca1-4be7-9be3-bce3806f526a",
-        #     name="Test Department",
-        #     budget=Decimal(10000.0),
-        # )
-        # department_repository.save(department)
+    @pytest.mark.asyncio
+    async def test_save(self, department_repository):
+        department = Department(
+            id="37d593c2-d9d2-4171-98de-e06dfb939b01",
+            name="Test2 Department",
+            budget=Decimal(10000.0),
+        )
+        await department_repository.save(department)
         pass
 
-    def test_get(self, department_repository):
-        # dep_id = "d7e4071d-8ca1-4be7-9be3-bce3806f526a"
-        # print(department_repository.get(dep_id))
+    @pytest.mark.asyncio
+    async def test_get(self, department_repository):
+        dep_id = "d7e4071d-8ca1-4be7-9be3-bce3806f526a"
+        print(await department_repository.get(dep_id))
         pass
 
-    def test_update(self, department_repository):
-        # department = Department(
-        #     id="d7e4071d-8ca1-4be7-9be3-bce3806f526a",
-        #     name="Testing Department",
-        #     budget=Decimal(20000.0),
-        # )
-        # department_repository.update(department)
-        # dep_id = "d7e4071d-8ca1-4be7-9be3-bce3806f526a"
-        # print(department_repository.get(dep_id))
+    @pytest.mark.asyncio
+    async def test_update(self, department_repository):
+        department = Department(
+            id="d7e4071d-8ca1-4be7-9be3-bce3806f526a",
+            name="Testing Department",
+            budget=Decimal(20000.0),
+        )
+        await department_repository.update(department)
+        dep_id = "d7e4071d-8ca1-4be7-9be3-bce3806f526a"
+        print(await department_repository.get(dep_id))
         pass
