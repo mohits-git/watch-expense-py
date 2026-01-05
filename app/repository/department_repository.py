@@ -7,7 +7,7 @@ from app.repository import DynamoDBResource, utils
 from boto3.dynamodb.conditions import Key
 
 
-class DepartmentRepository():
+class DepartmentRepository:
     def __init__(self,
                  ddb_resource: DynamoDBResource,
                  table_name: str):

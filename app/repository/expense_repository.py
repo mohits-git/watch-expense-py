@@ -10,7 +10,7 @@ from boto3.dynamodb.conditions import Attr, Key
 from app.repository import utils
 
 
-class ExpenseRepository():
+class ExpenseRepository:
     def __init__(self,
                  ddb_resource: DynamoDBResource,
                  table_name: str):
@@ -47,7 +47,7 @@ class ExpenseRepository():
             print("Error constructing the model from fetched data: ", err)
             raise err
 
-    def save(self, expense: Expense):
+    def save(self, expense: Expense) -> None:
         if not expense.id:
             expense.id = str(uuid.uuid4())
         if not expense.created_at:

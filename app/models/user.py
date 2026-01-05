@@ -25,3 +25,13 @@ class User(BaseModel):
 
     # pydantic config
     model_config = default_model_config()
+
+
+class UserClaims(BaseModel):
+    id: str = FieldAlias("UserID")
+    name: str = FieldAlias("Name")
+    email: str = FieldAlias("Email")
+    role: UserRole = FieldAlias("Role")
+
+    # pydantic config
+    model_config = default_model_config()

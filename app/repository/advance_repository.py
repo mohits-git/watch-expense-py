@@ -10,7 +10,7 @@ from boto3.dynamodb.conditions import Attr, Key
 from app.repository import utils
 
 
-class AdvanceRepository():
+class AdvanceRepository:
     def __init__(self,
                  ddb_resource: DynamoDBResource,
                  table_name: str):
@@ -47,7 +47,7 @@ class AdvanceRepository():
             print("Error constructing the model from fetched data: ", err)
             raise err
 
-    def save(self, advance: Advance):
+    def save(self, advance: Advance) -> None:
         if not advance.id:
             advance.id = str(uuid.uuid4())
         if not advance.created_at:

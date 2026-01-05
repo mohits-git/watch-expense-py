@@ -9,7 +9,7 @@ from boto3.dynamodb.conditions import Key
 from app.repository import utils
 
 
-class UserRepository():
+class UserRepository:
     def __init__(self,
                  ddb_resource: DynamoDBResource,
                  table_name: str):
