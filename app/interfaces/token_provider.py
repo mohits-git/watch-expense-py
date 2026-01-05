@@ -8,7 +8,7 @@ class TokenProvider(Protocol):
     TokenProvider interface/protocol
     """
 
-    def generate_token(self, claims: UserClaims) -> str:
+    def generate_token(self, user_claims: UserClaims) -> str:
         """
         Generates token for input claims
         :returns token string
