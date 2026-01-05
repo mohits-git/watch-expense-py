@@ -48,7 +48,7 @@ class ExpensesFilterOptions(BaseModel):
     user_id: str
     page: int
     limit: int
-    status: RequestStatus
+    status: RequestStatus | None
 
 
 class ExpenseSummary(BaseModel):
