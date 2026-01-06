@@ -1,26 +1,29 @@
 from typing import Annotated
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from app.dtos.config import default_model_config, FieldAlias
 from app.dtos.response import BaseResponse
 from app.models.user import UserRole
 
 
 class UserDTO(BaseModel):
-    id: str = FieldAlias("userId")
-    employee_id: str = FieldAlias("employeeId")
-    name: str = FieldAlias("name")
-    email: str = FieldAlias("email")
-    role: UserRole = FieldAlias("role")
-    project_id: str = FieldAlias("projectId", default="")
-    department_id: str = FieldAlias("departmentId", default="")
+    id: str = Field(alias="userId")
+    employee_id: str = Field(alias="employeeId")
+    name: str = Field(alias="name")
+    email: str = Field(alias="email")
+    role: UserRole = Field(alias="role")
+    project_id: str = Field(alias="projectId", default="")
+    department_id: str = Field(alias="departmentId", default="")
     created_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("createdAt", default=0)
+        lambda x: int(x))] = Field(alias="createdAt", default=0)
     updated_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("updatedAt", default=0)
+        lambda x: int(x))] = Field(alias="updatedAt", default=0)
 
     # pydantic config
-    model_config = default_model_config()
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=True,
+                              use_enum_values=True,
+                              extra="ignore")
 
 
 class GetUserResponse(BaseResponse):
@@ -32,15 +35,20 @@ class GetAllUsersResponse(BaseResponse):
 
 
 class CreateUserRequest(BaseModel):
-    employee_id: str = FieldAlias("employeeId")
-    name: str = FieldAlias("name")
-    password: str = FieldAlias("password")
-    email: str = FieldAlias("email")
-    role: UserRole = FieldAlias("role")
-    project_id: str = FieldAlias("projectId", default="")
-    department_id: str = FieldAlias("departmentId", default="")
+    employee_id: str = Field(alias="employeeId")
+    name: str = Field(alias="name")
+    password: str = Field(alias="password")
+    email: str = Field(alias="email")
+    role: UserRole = Field(alias="role")
+    project_id: str = Field(alias="projectId", default="")
+    department_id: str = Field(alias="departmentId", default="")
 
-    model_config = default_model_config()
+    # pydantic config
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=True,
+                              use_enum_values=True,
+                              extra="ignore")
 
 
 class CreateUserResponse(BaseResponse):

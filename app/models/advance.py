@@ -1,30 +1,32 @@
 from decimal import Decimal
 from typing import Annotated
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from app.models.expense import RequestStatus
-from app.models.config import default_model_config, FieldAlias
 
 
 class Advance(BaseModel):
-    id: str = FieldAlias("AdvanceID")
-    user_id: str = FieldAlias("UserID")
-    amount: Decimal = FieldAlias("Amount")
-    description: str = FieldAlias("Description")
-    purpose: str = FieldAlias("Purpose")
-    status: RequestStatus = FieldAlias("Status")
-    reconciled_expense_id: str | None = FieldAlias(
+    id: str = Field(alias="AdvanceID")
+    user_id: str = Field(alias="UserID")
+    amount: Decimal = Field(alias="Amount")
+    description: str = Field(alias="Description")
+    purpose: str = Field(alias="Purpose")
+    status: RequestStatus = Field(alias="Status")
+    reconciled_expense_id: str | None = Field(alias=
         "ReconciledExpenseID", default=None)
-    approved_by: str | None = FieldAlias("ApprovedBy", default=None)
-    approved_at: int | None = FieldAlias("ApprovedAt", default=None)
-    reviewed_by: str | None = FieldAlias("ReviewedBy", default=None)
-    reviewed_at: int | None = FieldAlias("ReviewedAt", default=None)
+    approved_by: str | None = Field(alias="ApprovedBy", default=None)
+    approved_at: int | None = Field(alias="ApprovedAt", default=None)
+    reviewed_by: str | None = Field(alias="ReviewedBy", default=None)
+    reviewed_at: int | None = Field(alias="ReviewedAt", default=None)
     created_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("CreatedAt", default=0)
+        lambda x: int(x))] = Field(alias="CreatedAt", default=0)
     updated_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("UpdatedAt", default=0)
+        lambda x: int(x))] = Field(alias="UpdatedAt", default=0)
 
     # pydantic config
-    model_config = default_model_config()
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=False,
+                              use_enum_values=True)
 
 
 class AdvancesFilterOptions(BaseModel):

@@ -1,8 +1,7 @@
 from decimal import Decimal
 from typing import Annotated
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from enum import Enum
-from app.models.config import default_model_config, FieldAlias
 
 
 class RequestStatus(str, Enum):
@@ -13,35 +12,41 @@ class RequestStatus(str, Enum):
 
 
 class Bill(BaseModel):
-    id: str = FieldAlias("BillID")
-    amount: Decimal = FieldAlias("Amount")
-    description: str = FieldAlias("Description")
-    attachment_url: str = FieldAlias("AttachmentURL")
+    id: str = Field(alias="BillID")
+    amount: Decimal = Field(alias="Amount")
+    description: str = Field(alias="Description")
+    attachment_url: str = Field(alias="AttachmentURL")
 
     # pydantic config
-    model_config = default_model_config()
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=False,
+                              use_enum_values=True)
 
 
 class Expense(BaseModel):
-    id: str = FieldAlias("ExpenseID")
-    user_id: str = FieldAlias("UserID")
-    amount: Decimal = FieldAlias("Amount")
-    description: str = FieldAlias("Description")
-    purpose: str = FieldAlias("Purpose")
-    status: RequestStatus = FieldAlias("Status")
-    is_reconciled: bool = FieldAlias("IsReconciled")
-    approved_by: str | None = FieldAlias("ApprovedBy", default=None)
-    approved_at: int | None = FieldAlias("ApprovedAt", default=None)
-    reviewed_by: str | None = FieldAlias("ReviewedBy", default=None)
-    reviewed_at: int | None = FieldAlias("ReviewedAt", default=None)
-    bills: list[Bill] = FieldAlias("Bills", default_factory=list)
+    id: str = Field(alias="ExpenseID")
+    user_id: str = Field(alias="UserID")
+    amount: Decimal = Field(alias="Amount")
+    description: str = Field(alias="Description")
+    purpose: str = Field(alias="Purpose")
+    status: RequestStatus = Field(alias="Status")
+    is_reconciled: bool = Field(alias="IsReconciled")
+    approved_by: str | None = Field(alias="ApprovedBy", default=None)
+    approved_at: int | None = Field(alias="ApprovedAt", default=None)
+    reviewed_by: str | None = Field(alias="ReviewedBy", default=None)
+    reviewed_at: int | None = Field(alias="ReviewedAt", default=None)
+    bills: list[Bill] = Field(alias="Bills", default_factory=list)
     created_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("CreatedAt", default=0)
+        lambda x: int(x))] = Field(alias="CreatedAt", default=0)
     updated_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("UpdatedAt", default=0)
+        lambda x: int(x))] = Field(alias="UpdatedAt", default=0)
 
     # pydantic config
-    model_config = default_model_config()
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=False,
+                              use_enum_values=True)
 
 
 class ExpensesFilterOptions(BaseModel):

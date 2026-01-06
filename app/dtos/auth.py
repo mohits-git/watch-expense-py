@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+from app.dtos.response import BaseResponse
+from app.dtos.user import UserDTO
 
 
 class LoginRequest(BaseModel):
@@ -8,3 +10,7 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     token: str
+
+
+class GetAuthMeResponse(BaseResponse):
+    data: UserDTO

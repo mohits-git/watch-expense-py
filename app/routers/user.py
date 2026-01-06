@@ -1,4 +1,3 @@
-from os import stat
 from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
 from app.dependencies.auth import AuthenticatedUser, admin_only
@@ -55,6 +54,7 @@ async def handle_create_user(
 ):
     user_dict = user_data.model_dump(by_alias=False)
     user = User.model_construct(_fields_set=set(user_dict.keys()), **user_dict)
+    user.id = ""
     user_id = await user_service.create_user(curr_user, user)
     return {
         "status": status.HTTP_201_CREATED,

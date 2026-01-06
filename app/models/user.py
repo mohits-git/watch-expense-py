@@ -1,7 +1,6 @@
 from typing import Annotated
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 from enum import Enum
-from app.models.config import default_model_config, FieldAlias
 
 
 class UserRole(str, Enum):
@@ -10,28 +9,34 @@ class UserRole(str, Enum):
 
 
 class User(BaseModel):
-    id: str = FieldAlias("UserID", default="")
-    employee_id: str = FieldAlias("EmployeeID")
-    name: str = FieldAlias("Name")
-    password: str = FieldAlias("PasswordHash")
-    email: str = FieldAlias("Email")
-    role: UserRole = FieldAlias("Role")
-    project_id: str = FieldAlias("ProjectID", default="")
-    department_id: str = FieldAlias("DepartmentID", default="")
+    id: str = Field(alias="UserID", default="")
+    employee_id: str = Field(alias="EmployeeID")
+    name: str = Field(alias="Name")
+    password: str = Field(alias="PasswordHash")
+    email: str = Field(alias="Email")
+    role: UserRole = Field(alias="Role")
+    project_id: str = Field(alias="ProjectID", default="")
+    department_id: str = Field(alias="DepartmentID", default="")
     created_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("CreatedAt", default=0)
+        lambda x: int(x))] = Field(alias="CreatedAt", default=0)
     updated_at: Annotated[int, BeforeValidator(
-        lambda x: int(x))] = FieldAlias("UpdatedAt", default=0)
+        lambda x: int(x))] = Field(alias="UpdatedAt", default=0)
 
     # pydantic config
-    model_config = default_model_config()
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=False,
+                              use_enum_values=True)
 
 
 class UserClaims(BaseModel):
-    user_id: str = FieldAlias("UserID")
-    name: str = FieldAlias("Name")
-    email: str = FieldAlias("Email")
-    role: UserRole = FieldAlias("Role")
+    user_id: str = Field(alias="UserID")
+    name: str = Field(alias="Name")
+    email: str = Field(alias="Email")
+    role: UserRole = Field(alias="Role")
 
     # pydantic config
-    model_config = default_model_config()
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=False,
+                              use_enum_values=True)
