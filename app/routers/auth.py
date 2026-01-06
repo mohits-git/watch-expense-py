@@ -1,9 +1,7 @@
-from fastapi import APIRouter, status
-from fastapi.responses import JSONResponse
-
+from fastapi import APIRouter
 from app.dependencies import AuthServiceInstance, AuthTokenHeader
 from app.dtos.auth import LoginRequest, LoginResponse
-from app.models.user import User
+from app.dtos.user import UserDTO
 
 
 auth_router = APIRouter(prefix="/auth")
@@ -15,10 +13,6 @@ async def handle_login(login_request: LoginRequest, auth_service: AuthServiceIns
     return LoginResponse(token=token)
 
 
-@auth_router.post('/me', response_model=User)
+@auth_router.post('/me', response_model=UserDTO)
 async def handle_auth_me(token: AuthTokenHeader, auth_service: AuthServiceInstance):
-    user = await auth_service.get_current_user(token)
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content=user.model_dump(mode='json', exclude_none=True)
-    )
+    return await auth_service.get_current_user(token)
