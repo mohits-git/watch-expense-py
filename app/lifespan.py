@@ -1,33 +1,12 @@
 from contextlib import asynccontextmanager
-from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException, Header, Request, status
+from fastapi import FastAPI
 from app.repository.user_repository import UserRepository
+from app.repository.project_repository import ProjectRepository
 from app.repository import get_boto3_session
 from app.services.auth import AuthService
+from app.services.user import UserService
 from app.utils.bcrypt_password_hasher import BcryptPasswordHasher
 from app.utils.jwt_token_provider import JWTTokenProvider
-
-
-def get_auth_service(request: Request) -> AuthService:
-    return request.app.state.auth_service
-
-
-def get_auth_token(authorization: Annotated[str | None, Header()]) -> str:
-    if not authorization or not authorization.startswith('Bearer '):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized")
-    try:
-        token = authorization.split(' ', 2)[1]
-        return token
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized")
-
-
-AuthServiceInstance = Annotated[AuthService, Depends(get_auth_service)]
-AuthTokenHeader = Annotated[str, Depends(get_auth_token)]
 
 
 @asynccontextmanager
@@ -41,15 +20,20 @@ async def lifespan(app: FastAPI):
             ddb_table = await dynamodb_resource.Table(table_name)
             # repos
             user_repo = UserRepository(ddb_table, table_name)
+            project_repo = ProjectRepository(ddb_table, table_name)
             # utils
             token_provider = JWTTokenProvider('top-secret')
             password_hasher = BcryptPasswordHasher()
             # services
             auth_service = AuthService(
                 user_repo, token_provider, password_hasher)
+            user_service = UserService(
+                password_hasher, user_repo, project_repo)
 
             # add to state
+            app.state.token_provider = token_provider
             app.state.auth_service = auth_service
+            app.state.user_service = user_service
             yield
     except Exception as e:
         print("Error while starting up the server: ", e)
