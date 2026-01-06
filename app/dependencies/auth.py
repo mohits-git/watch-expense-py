@@ -6,7 +6,9 @@ from app.dependencies.token_provider import TokenProviderInstance
 from app.models.user import UserClaims, UserRole
 
 
-def get_auth_token(authorization: Annotated[str | None, Header()], token_provider: TokenProviderInstance) -> str:
+def get_auth_token(
+        authorization: Annotated[str | None, Header(alias="Authorization")],
+        token_provider: TokenProviderInstance) -> str:
     if not authorization or not authorization.startswith('Bearer '):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

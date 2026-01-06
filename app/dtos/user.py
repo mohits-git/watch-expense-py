@@ -51,10 +51,11 @@ class CreateUserRequest(BaseModel):
                               extra="ignore")
 
 
-class CreateUserResponse(BaseResponse):
-    class CreateUserResponseData(BaseModel):
-        id: str
+class CreateUserResponseData(BaseModel):
+    id: str
 
+
+class CreateUserResponse(BaseResponse):
     data: CreateUserResponseData
 
 
@@ -62,8 +63,9 @@ class UpdateUserRequest(CreateUserRequest):
     pass
 
 
-class GetUserBudgetResponse(BaseResponse):
-    class GetUserBudgetResponseData(BaseModel):
-        budget: float
+class GetUserBudgetResponseData(BaseModel):
+    budget: float
 
+
+class GetUserBudgetResponse(BaseResponse):
     data: GetUserBudgetResponseData

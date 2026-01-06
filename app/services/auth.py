@@ -26,10 +26,10 @@ class AuthService:
             or not user.password
             or not self._password_hasher.verify_password(password, user.password)
         ):
-            raise AppException(AppErr.INVALID_USER_CREDENTIALS)
+            raise AppException(AppErr.INVALID_USER_CREDENTIAL)
 
         token = self._token_provider.generate_token(
-            UserClaims.model_validate(**user.model_dump(), extra="ignore")
+            UserClaims.model_validate(user.model_dump(), extra="ignore")
         )
         return token
 

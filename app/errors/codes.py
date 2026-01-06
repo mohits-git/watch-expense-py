@@ -13,7 +13,8 @@ class AppErr(enum.IntEnum):
     TOO_LARGE = 1008
 
     # Auth errors
-    ADMIN_ONLY = 2001
+    INVALID_USER_CREDENTIAL = 2001
+    ADMIN_ONLY = 2002
 
     # User resource errors
     USER_NOT_FOUND = 3001

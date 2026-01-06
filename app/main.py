@@ -2,10 +2,12 @@ from fastapi import FastAPI
 from uvicorn import run
 from app.lifespan import lifespan
 from app.routers.auth import auth_router
+from app.routers.user import user_router
 
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router, prefix='/api')
+app.include_router(user_router, prefix='/api')
 
 
 if __name__ == "__main__":

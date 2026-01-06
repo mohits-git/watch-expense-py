@@ -29,5 +29,5 @@ class JWTTokenProvider:
     def validate_token(self, token: str) -> UserClaims:
         claims = jwt.decode(
             token, self._jwt_secret, algorithms=[self._algorithm])
-        user_claims = UserClaims.model_validate(**claims, extra="ignore")
+        user_claims = UserClaims.model_validate(claims, extra="ignore")
         return user_claims
