@@ -10,7 +10,7 @@ class UserRole(str, Enum):
 
 
 class User(BaseModel):
-    id: str = FieldAlias("UserID")
+    id: str = FieldAlias("UserID", default="")
     employee_id: str = FieldAlias("EmployeeID")
     name: str = FieldAlias("Name")
     password: str = FieldAlias("PasswordHash")

@@ -27,6 +27,10 @@ class GetUserResponse(BaseResponse):
     data: UserDTO
 
 
+class GetAllUsersResponse(BaseResponse):
+    data: list[UserDTO]
+
+
 class CreateUserRequest(BaseModel):
     employee_id: str = FieldAlias("employeeId")
     name: str = FieldAlias("name")

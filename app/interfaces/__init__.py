@@ -1,5 +1,5 @@
 """
-This package defines external interfaces on which business logic services depends on
+This package defines external interfaces on which business-logic/services depends on
 """
 
 from .token_provider import TokenProvider

@@ -7,8 +7,14 @@ def FieldAlias(alias: str, **kwargs):
 
 
 def default_model_config(**kwargs):
-    return ConfigDict(validate_by_name=True,
-                      validate_by_alias=False,
+    """
+    - by default validates and serializes by alias
+    - use enum values
+    - ignores extra values
+    """
+    return ConfigDict(validate_by_name=False,
+                      validate_by_alias=True,
                       serialize_by_alias=True,
-                      use_enum_values=False,
+                      use_enum_values=True,
+                      extra="ignore",
                       **kwargs)
