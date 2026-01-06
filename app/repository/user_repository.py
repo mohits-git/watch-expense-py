@@ -117,7 +117,7 @@ class UserRepository:
         # build update expression
         user.updated_at = int(time.time_ns() // 1e6)
         exclude_fields = {'id', 'created_at'}
-        if user.password == '' or not user.password:
+        if not user.password or user.password == '':
             exclude_fields.add('password')
         to_update = user.model_dump(
             by_alias=True, exclude=exclude_fields)

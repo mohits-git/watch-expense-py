@@ -20,7 +20,8 @@ class AuthService:
         if user is None:
             raise Exception("Not Found")
 
-        if not self._password_hasher.verify_password(password, user.password):
+        if not user.password or not self._password_hasher.verify_password(
+                password, user.password):
             raise Exception("Forbidden")
 
         token = self._token_provider.generate_token(
@@ -32,6 +33,7 @@ class AuthService:
         user = await self._user_repo.get(user_claims.user_id)
         if user is None:
             raise Exception("Invalid user token")
+        user.password = None
         return user
 
     def logout(self, token: str) -> None:
