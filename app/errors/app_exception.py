@@ -1,9 +1,10 @@
-from app.errors.codes import AppErrCode
+from app.errors.codes import AppErr
 
 
 class AppException(Exception):
     def __init__(self,
-                 exc_code: AppErrCode,
-                 msg: str = "Internal Server Error"):
+                 exc_code: AppErr,
+                 msg: str | None = "Application error"):
+        super().__init__(msg)
         self.status = exc_code
         self.message = msg
