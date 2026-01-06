@@ -11,12 +11,12 @@ class AuthService:
         self._token_provider = token_provider
         self._password_hasher = password_hasher
 
-    def login(self, email: str, password: str) -> str:
+    async def login(self, email: str, password: str) -> str:
         """
         handles user login for the input email and password and returns a (jwt) access token
         :returns token_string
         """
-        user = self._user_repo.get_by_email(email)
+        user = await self._user_repo.get_by_email(email)
         if user is None:
             raise Exception("Not Found")
 
@@ -27,9 +27,9 @@ class AuthService:
             UserClaims.model_validate(**user.model_dump(), extra="ignore"))
         return token
 
-    def get_current_user(self, token: str) -> User:
+    async def get_current_user(self, token: str) -> User:
         user_claims = self._token_provider.validate_token(token)
-        user = self._user_repo.get(user_claims.user_id)
+        user = await self._user_repo.get(user_claims.user_id)
         if user is None:
             raise Exception("Invalid user token")
         return user
