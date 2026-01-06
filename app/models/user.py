@@ -1,7 +1,7 @@
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
 from enum import Enum
-from app.models import default_model_config, FieldAlias
+from app.models.config import default_model_config, FieldAlias
 
 
 class UserRole(str, Enum):

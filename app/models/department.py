@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator
-from app.models import default_model_config, FieldAlias
+from app.models.config import default_model_config, FieldAlias
 
 
 class Department(BaseModel):
