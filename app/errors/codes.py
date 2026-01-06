@@ -22,6 +22,9 @@ class AppErr(enum.IntEnum):
     USER_ALREADY_EXISTS = 3003
     CANNOT_DELETE_SELF = 3004
 
+    # Project resource errors
+    PROJECT_NOT_FOUND = 4001
+
 
 @dataclass
 class HTTPAppError:
