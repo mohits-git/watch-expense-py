@@ -24,7 +24,7 @@ class AuthService:
         if (
             user is None
             or not user.password
-            or not self._password_hasher.verify_password(password, user.password)
+            or not self._password_hasher.verify_password(user.password, password)
         ):
             raise AppException(AppErr.INVALID_USER_CREDENTIAL)
 
