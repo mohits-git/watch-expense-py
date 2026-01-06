@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from app.dependencies import AuthServiceInstance, AuthTokenHeader
+from app.dependencies.services import AuthServiceInstance
+from app.dependencies.auth import AuthTokenHeader
 from app.dtos.auth import LoginRequest, LoginResponse
 from app.dtos.user import UserDTO
 

@@ -1,0 +1,106 @@
+from os import stat
+from typing import Annotated
+from fastapi import APIRouter, Depends, Path, status
+from app.dependencies.auth import AuthenticatedUser, admin_only
+from app.dependencies.services import UserServiceInstance
+from app.dtos.response import BaseResponse
+from app.dtos.user import (
+    CreateUserRequest,
+    CreateUserResponse,
+    GetAllUsersResponse,
+    GetUserBudgetResponse,
+    GetUserResponse,
+    UpdateUserRequest,
+    UserDTO,
+)
+from app.models.user import User
+
+
+user_router = APIRouter(prefix="/users", dependencies=[Depends(admin_only)])
+
+
+@user_router.get("/", response_model=GetAllUsersResponse)
+async def handle_get_all_users(
+    curr_user: AuthenticatedUser, user_service: UserServiceInstance
+):
+    users = await user_service.get_all_users(curr_user)
+    return GetAllUsersResponse(
+        status=status.HTTP_200_OK,
+        message="Fetched all users successfully",
+        data=[
+            UserDTO.model_validate(user.model_dump(), by_alias=False) for user in users
+        ],
+    )
+
+
+@user_router.get("/{user_id}", response_model=GetUserResponse)
+async def handle_get_user_by_id(
+    curr_user: AuthenticatedUser,
+    user_id: Annotated[str, Path()],
+    user_service: UserServiceInstance,
+):
+    user = await user_service.get_user_by_id(curr_user, user_id)
+    return GetUserResponse(
+        status=status.HTTP_200_OK,
+        message="Fetched user successfully",
+        data=UserDTO.model_validate(user.model_dump(), by_alias=False),
+    )
+
+
+@user_router.post("/", response_model=CreateUserResponse)
+async def handle_create_user(
+    user_data: CreateUserRequest,
+    curr_user: AuthenticatedUser,
+    user_service: UserServiceInstance,
+):
+    user_dict = user_data.model_dump(by_alias=False)
+    user = User.model_construct(_fields_set=set(user_dict.keys()), **user_dict)
+    user_id = await user_service.create_user(curr_user, user)
+    return {
+        "status": status.HTTP_201_CREATED,
+        "message": "User created successfully",
+        "data": {"user_id": user_id},
+    }
+
+
+@user_router.put("/", response_model=BaseResponse, response_model_exclude_none=True)
+async def handle_update_user(
+    user_data: UpdateUserRequest,
+    curr_user: AuthenticatedUser,
+    user_service: UserServiceInstance,
+):
+    user_dict = user_data.model_dump(by_alias=False)
+    user = User.model_construct(_fields_set=set(user_dict.keys()), **user_dict)
+    await user_service.update_user(curr_user, user)
+    return {
+        "status": status.HTTP_200_OK,
+        "message": "User updated successfully",
+        "data": None,
+    }
+
+
+@user_router.delete("/{user_id}", response_model=BaseResponse)
+async def handle_delete_user(
+    curr_user: AuthenticatedUser,
+    user_id: Annotated[str, Path()],
+    user_service: UserServiceInstance,
+):
+    await user_service.delete_user(curr_user, user_id)
+    return {
+        "status": status.HTTP_200_OK,
+        "message": "User deleted successfully",
+        "data": None,
+    }
+
+
+@user_router.get("/budget", response_model=GetUserBudgetResponse)
+async def handle_get_user_budget(
+    curr_user: AuthenticatedUser,
+    user_service: UserServiceInstance,
+):
+    budget = await user_service.get_user_budget(curr_user)
+    return {
+        "status": status.HTTP_200_OK,
+        "message": "Fetched user budget successfully",
+        "data": {"budget": budget},
+    }

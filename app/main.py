@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from uvicorn import run
-from app.dependencies import lifespan
-from app.routers.auth_router import auth_router
+from app.lifespan import lifespan
+from app.routers.auth import auth_router
 
 
 app = FastAPI(lifespan=lifespan)
