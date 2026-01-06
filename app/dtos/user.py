@@ -6,7 +6,7 @@ from app.models.user import UserRole
 
 
 class UserDTO(BaseModel):
-    id: str = Field(alias="userId")
+    id: str = Field(alias="id")
     employee_id: str = Field(alias="employeeId")
     name: str = Field(alias="name")
     email: str = Field(alias="email")
@@ -60,7 +60,7 @@ class CreateUserResponse(BaseResponse):
 
 
 class UpdateUserRequest(CreateUserRequest):
-    pass
+    password: str = Field(default="")
 
 
 class GetUserBudgetResponseData(BaseModel):

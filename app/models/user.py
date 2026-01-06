@@ -30,10 +30,10 @@ class User(BaseModel):
 
 
 class UserClaims(BaseModel):
-    user_id: str = Field(alias="UserID")
-    name: str = Field(alias="Name")
-    email: str = Field(alias="Email")
-    role: UserRole = Field(alias="Role")
+    user_id: str = Field(alias="id")
+    name: str
+    email: str
+    role: UserRole
 
     # pydantic config
     model_config = ConfigDict(validate_by_name=True,

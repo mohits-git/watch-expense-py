@@ -30,7 +30,9 @@ def get_auth_token(
 AuthTokenHeader = Annotated[str, Depends(get_auth_token)]
 
 
-def get_authenticated_user(token: AuthTokenHeader, token_provider: TokenProviderInstance) -> UserClaims:
+def get_authenticated_user(
+        token: AuthTokenHeader,
+        token_provider: TokenProviderInstance) -> UserClaims:
     return token_provider.validate_token(token)
 
 

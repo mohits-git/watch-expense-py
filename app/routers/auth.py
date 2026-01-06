@@ -14,6 +14,6 @@ async def handle_login(login_request: LoginRequest, auth_service: AuthServiceIns
     return LoginResponse(token=token)
 
 
-@auth_router.post('/me', response_model=UserDTO)
+@auth_router.get('/me', response_model=UserDTO)
 async def handle_auth_me(token: AuthTokenHeader, auth_service: AuthServiceInstance):
     return await auth_service.get_current_user(token)
