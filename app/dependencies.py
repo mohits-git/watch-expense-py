@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Header, Request, status
 from app.repository.user_repository import UserRepository
 from app.repository import get_boto3_session
-from app.services.auth_service import AuthService
+from app.services.auth import AuthService
 from app.utils.bcrypt_password_hasher import BcryptPasswordHasher
 from app.utils.jwt_token_provider import JWTTokenProvider
 

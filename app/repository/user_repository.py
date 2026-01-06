@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from types_aiobotocore_dynamodb.service_resource import Table
 from types_aiobotocore_dynamodb.type_defs import TransactWriteItemTypeDef
 from app.errors.app_exception import AppException
-from app.errors.codes import AppErrCode
+from app.errors.codes import AppErr
 from app.models.user import User
 from boto3.dynamodb.conditions import Key
 from app.repository import utils
@@ -94,7 +94,7 @@ class UserRepository:
     async def delete(self, user_id: str) -> None:
         email = await self._get_email_by_id(user_id)
         if not email:
-            raise AppException(AppErrCode.NOT_FOUND,
+            raise AppException(AppErr.NOT_FOUND,
                                f"User with user_id: {user_id} not found")
         primary_key = self._get_user_primary_key(user_id)
         lookup_pk = self._get_lookup_primary_key(email)

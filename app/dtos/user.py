@@ -10,7 +10,6 @@ class UserDTO(BaseModel):
     id: str = FieldAlias("userId")
     employee_id: str = FieldAlias("employeeId")
     name: str = FieldAlias("name")
-    password: str | None = FieldAlias("passwordHash")
     email: str = FieldAlias("email")
     role: UserRole = FieldAlias("role")
     project_id: str = FieldAlias("projectId", default="")

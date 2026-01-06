@@ -13,7 +13,7 @@ class User(BaseModel):
     id: str = FieldAlias("UserID")
     employee_id: str = FieldAlias("EmployeeID")
     name: str = FieldAlias("Name")
-    password: str | None = FieldAlias("PasswordHash")
+    password: str = FieldAlias("PasswordHash")
     email: str = FieldAlias("Email")
     role: UserRole = FieldAlias("Role")
     project_id: str = FieldAlias("ProjectID", default="")
