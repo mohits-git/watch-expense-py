@@ -6,7 +6,7 @@ from app.dependencies.token_provider import TokenProviderInstance
 from app.models.user import UserClaims, UserRole
 
 
-def get_auth_token(
+def auth_token(
         authorization: Annotated[str | None, Header(alias="Authorization")],
         token_provider: TokenProviderInstance) -> str:
     if not authorization or not authorization.startswith('Bearer '):
@@ -27,16 +27,16 @@ def get_auth_token(
             detail="Unauthorized")
 
 
-AuthTokenHeader = Annotated[str, Depends(get_auth_token)]
+AuthTokenHeader = Annotated[str, Depends(auth_token)]
 
 
-def get_authenticated_user(
+def authenticated_user(
         token: AuthTokenHeader,
         token_provider: TokenProviderInstance) -> UserClaims:
     return token_provider.validate_token(token)
 
 
-AuthenticatedUser = Annotated[UserClaims, Depends(get_authenticated_user)]
+AuthenticatedUser = Annotated[UserClaims, Depends(authenticated_user)]
 
 
 def admin_only(curr_user: AuthenticatedUser):
