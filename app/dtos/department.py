@@ -37,15 +37,15 @@ class UpdateDepartmentRequest(CreateDepartmentRequest):
 
 
 class CreateDepartmentResponse(BaseResponse):
-    class CreateDepartmentResponseData(BaseModel):
+    class Data(BaseModel):
         id: str
 
-    data: DepartmentDTO
+    data: Data
 
 
 class GetDepartmentResponse(BaseResponse):
     data: DepartmentDTO
 
 
-class GetDepartmentsResponse(BaseResponse):
+class GetAllDepartmentsResponse(BaseResponse):
     data: list[DepartmentDTO]

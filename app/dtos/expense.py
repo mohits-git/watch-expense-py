@@ -72,10 +72,10 @@ class CreateExpenseRequest(BaseModel):
 
 
 class CreateExpenseResponse(BaseResponse):
-    class CreateExpenseResponseData(BaseModel):
+    class Data(BaseModel):
         id: str
 
-    data: CreateExpenseResponseData
+    data: Data
 
 
 class UpdateExpenseRequest(CreateExpenseRequest):
@@ -87,7 +87,7 @@ class UpdateExpenseStatusRequest(BaseModel):
 
 
 class GetExpenseResponse(BaseResponse):
-    class GetExpenseResponseData(BaseModel):
+    class Data(BaseModel):
         total_expenses: int = Field(alias="totalExpenses")
         expenses: list[ExpenseDTO] = Field(alias='expenses')
 
@@ -96,7 +96,7 @@ class GetExpenseResponse(BaseResponse):
                                   serialize_by_alias=True,
                                   extra="ignore")
 
-    data: GetExpenseResponseData
+    data: Data
 
 
 class ExpenseSummaryDTO(BaseModel):

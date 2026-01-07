@@ -4,7 +4,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 
 class Project(BaseModel):
-    id: str = Field(alias="ProjectID")
+    id: str = Field(alias="ProjectID", default="")
     name: str = Field(alias="Name")
     description: str = Field(alias="Description")
     budget: Decimal = Field(alias="Budget")

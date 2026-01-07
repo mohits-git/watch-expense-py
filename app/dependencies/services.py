@@ -36,6 +36,6 @@ def get_advance_service(request: Request) -> AdvanceService:
 AuthServiceInstance = Annotated[AuthService, Depends(get_auth_service)]
 UserServiceInstance = Annotated[UserService, Depends(get_user_service)]
 ProjectServiceInstance = Annotated[ProjectService, Depends(get_project_service)]
-DepartmentServiceInstance = Annotated[UserService, Depends(get_department_service)]
+DepartmentServiceInstance = Annotated[DepartmentService, Depends(get_department_service)]
 ExpenseServiceInstance = Annotated[ExpenseService, Depends(get_expense_service)]
 AdvanceServiceInstance = Annotated[AdvanceService, Depends(get_advance_service)]

@@ -45,15 +45,15 @@ class UpdateProjectRequest(CreateProjectRequest):
 
 
 class CreateProjectResponse(BaseResponse):
-    class CreateProjectResponseData(BaseModel):
+    class Data(BaseModel):
         id: str
 
-    data: ProjectDTO
+    data: Data
 
 
 class GetProjectResponse(BaseResponse):
     data: ProjectDTO
 
 
-class GetProjectsResponse(BaseResponse):
+class GetAllProjectsResponse(BaseResponse):
     data: list[ProjectDTO]

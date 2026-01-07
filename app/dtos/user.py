@@ -51,21 +51,19 @@ class CreateUserRequest(BaseModel):
                               extra="ignore")
 
 
-class CreateUserResponseData(BaseModel):
-    id: str
-
-
 class CreateUserResponse(BaseResponse):
-    data: CreateUserResponseData
+    class Data(BaseModel):
+        id: str
+
+    data: Data
 
 
 class UpdateUserRequest(CreateUserRequest):
     password: str = Field(default="")
 
 
-class GetUserBudgetResponseData(BaseModel):
-    budget: float
-
-
 class GetUserBudgetResponse(BaseResponse):
-    data: GetUserBudgetResponseData
+    class Data(BaseModel):
+        budget: float
+
+    data: Data

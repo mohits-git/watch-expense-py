@@ -6,10 +6,8 @@ from app.dtos.response import BaseResponse
 from app.dtos.user import (
     CreateUserRequest,
     CreateUserResponse,
-    CreateUserResponseData,
     GetAllUsersResponse,
     GetUserBudgetResponse,
-    GetUserBudgetResponseData,
     GetUserResponse,
     UpdateUserRequest,
     UserDTO,
@@ -59,7 +57,7 @@ async def handle_create_user(
     return CreateUserResponse(
         status=status.HTTP_201_CREATED,
         message="User created successfully",
-        data=CreateUserResponseData(id=user_id),
+        data=CreateUserResponse.Data(id=user_id),
     )
 
 
@@ -99,7 +97,7 @@ async def handle_get_user_budget(
     return GetUserBudgetResponse(
         status=status.HTTP_200_OK,
         message="Fetched user budget successfully",
-        data=GetUserBudgetResponseData(budget=budget),
+        data=GetUserBudgetResponse.Data(budget=budget),
     )
 
 

@@ -39,10 +39,10 @@ class CreateAdvanceRequest(BaseModel):
 
 
 class CreateAdvanceResponse(BaseResponse):
-    class CreateAdvanceResponseData(BaseModel):
+    class Data(BaseModel):
         id: str
 
-    data: CreateAdvanceResponseData
+    data: Data
 
 
 class UpdateAdvanceRequest(CreateAdvanceRequest):
@@ -54,7 +54,7 @@ class UpdateAdvanceStatusRequest(BaseModel):
 
 
 class GetAdvanceResponse(BaseResponse):
-    class GetAdvanceResponseData(BaseModel):
+    class Data(BaseModel):
         total_advances: int = Field(alias="totalAdvances")
         advances: list[AdvanceDTO] = Field(alias='advances')
 
@@ -63,7 +63,7 @@ class GetAdvanceResponse(BaseResponse):
                                   validate_by_alias=True,
                                   serialize_by_alias=True)
 
-    data: GetAdvanceResponseData
+    data: Data
 
 
 class AdvanceSummaryDTO(BaseModel):
