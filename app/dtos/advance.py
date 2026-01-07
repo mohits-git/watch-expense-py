@@ -1,15 +1,15 @@
-from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.dtos.response import BaseResponse
+from app.dtos.type import DecimalAsFloat
 from app.models.expense import RequestStatus
 
 
 class AdvanceDTO(BaseModel):
     id: str = Field(alias="advanceId")
     user_id: str = Field(alias="userId")
-    amount: Decimal = Field(alias="amount")
+    amount: DecimalAsFloat = Field(alias="amount")
     description: str = Field(alias="description")
     purpose: str = Field(alias="purpose")
     status: RequestStatus = Field(alias="status")
@@ -33,7 +33,7 @@ class AdvanceDTO(BaseModel):
 
 
 class CreateAdvanceRequest(BaseModel):
-    amount: Decimal
+    amount: DecimalAsFloat
     description: str
     purpose: str
 
@@ -72,10 +72,10 @@ class GetAllAdvancesResponse(BaseResponse):
 
 class GetAdvanceSummaryResponse(BaseResponse):
     class Data(BaseModel):
-        approved: Decimal = Field(alias="approved")
-        reconciled: Decimal = Field(alias="reconciled")
-        pending: Decimal = Field(alias="pendingReconciliation")
-        rejected: Decimal = Field(alias="rejectedAdvance")
+        approved: DecimalAsFloat = Field(alias="approved")
+        reconciled: DecimalAsFloat = Field(alias="reconciled")
+        pending: DecimalAsFloat = Field(alias="pendingReconciliation")
+        rejected: DecimalAsFloat = Field(alias="rejectedAdvance")
         # pydantic config
         model_config = ConfigDict(validate_by_name=True,
                                   validate_by_alias=True,

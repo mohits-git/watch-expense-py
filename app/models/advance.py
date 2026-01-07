@@ -11,8 +11,8 @@ class Advance(BaseModel):
     description: str = Field(alias="Description")
     purpose: str = Field(alias="Purpose")
     status: RequestStatus = Field(alias="Status")
-    reconciled_expense_id: str | None = Field(alias=
-        "ReconciledExpenseID", default=None)
+    reconciled_expense_id: str | None = Field(
+        alias="ReconciledExpenseID", default=None)
     approved_by: str | None = Field(alias="ApprovedBy", default=None)
     approved_at: int | None = Field(alias="ApprovedAt", default=None)
     reviewed_by: str | None = Field(alias="ReviewedBy", default=None)
@@ -30,10 +30,10 @@ class Advance(BaseModel):
 
 
 class AdvancesFilterOptions(BaseModel):
-    user_id: str
-    page: int
-    limit: int
-    status: RequestStatus
+    user_id: str | None = Field(default=None)
+    page: int = Field(default=1)
+    limit: int = Field(default=10)
+    status: RequestStatus | None = Field(default=None)
 
 
 class AdvanceSummary(BaseModel):

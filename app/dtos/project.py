@@ -1,15 +1,15 @@
-from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.dtos.response import BaseResponse
+from app.dtos.type import DecimalAsFloat
 
 
 class ProjectDTO(BaseModel):
     id: str = Field(alias="projectId")
     name: str = Field(alias="name")
     description: str = Field(alias="description")
-    budget: Decimal = Field(alias="budget")
+    budget: DecimalAsFloat = Field(alias="budget")
     start_date: int = Field(alias="startDate")
     end_date: int = Field(alias="endDate")
     department_id: str = Field(alias="departmentId")
@@ -28,7 +28,7 @@ class ProjectDTO(BaseModel):
 class CreateProjectRequest(BaseModel):
     name: str = Field(alias="name")
     description: str = Field(alias="description")
-    budget: Decimal = Field(alias="budget")
+    budget: DecimalAsFloat = Field(alias="budget")
     start_date: int = Field(alias="startDate")
     end_date: int = Field(alias="endDate")
     department_id: str = Field(alias="departmentId")

@@ -8,8 +8,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class LoginResponse(BaseModel):
-    token: str
+class LoginResponse(BaseResponse):
+    class Data(BaseModel):
+        token: str
+    data: Data
 
 
 class GetAuthMeResponse(BaseResponse):

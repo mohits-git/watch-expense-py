@@ -1,14 +1,14 @@
-from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.dtos.response import BaseResponse
+from app.dtos.type import DecimalAsFloat
 from app.models.expense import RequestStatus
 
 
 class BillDTO(BaseModel):
     id: str = Field(alias="billId")
-    amount: Decimal = Field(alias="amount")
+    amount: DecimalAsFloat = Field(alias="amount")
     description: str = Field(alias="description")
     attachment_url: str = Field(alias="attachmentUrl")
 
@@ -22,7 +22,7 @@ class BillDTO(BaseModel):
 class ExpenseDTO(BaseModel):
     id: str = Field(alias="expenseId")
     user_id: str = Field(alias="userId")
-    amount: Decimal = Field(alias="amount")
+    amount: DecimalAsFloat = Field(alias="amount")
     description: str = Field(alias="description")
     purpose: str = Field(alias="purpose")
     status: RequestStatus = Field(alias="status")
@@ -45,7 +45,7 @@ class ExpenseDTO(BaseModel):
 
 
 class CreateBillRequest(BaseModel):
-    amount: Decimal
+    amount: DecimalAsFloat
     description: str
     attachment_url: str = Field(alias="attachmentUrl")
 
@@ -57,7 +57,7 @@ class CreateBillRequest(BaseModel):
 
 
 class CreateExpenseRequest(BaseModel):
-    amount: Decimal
+    amount: DecimalAsFloat
     description: str
     purpose: str
     bills: list[BillDTO]
@@ -103,10 +103,10 @@ class GetAllExpensesResponse(BaseResponse):
 
 class GetExpenseSummaryResponse(BaseResponse):
     class Data(BaseModel):
-        total_expenses: Decimal = Field(alias="totalExpenses")
-        pending_expense: Decimal = Field(alias="pendingExpense")
-        reimbursed_expense: Decimal = Field(alias="reimbursedExpense")
-        rejected_expense: Decimal = Field(alias="rejectedExpense")
+        total_expenses: DecimalAsFloat = Field(alias="totalExpenses")
+        pending_expense: DecimalAsFloat = Field(alias="pendingExpense")
+        reimbursed_expense: DecimalAsFloat = Field(alias="reimbursedExpense")
+        rejected_expense: DecimalAsFloat = Field(alias="rejectedExpense")
 
         model_config = ConfigDict(validate_by_name=True,
                                   validate_by_alias=True,
