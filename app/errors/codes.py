@@ -10,6 +10,7 @@ class AppErr(enum.IntEnum):
     INTERNAL = 1006
     TIMEOUT = 1007
     TOO_LARGE = 1008
+    THROTTLE = 1009
 
     # Auth errors
     INVALID_USER_CREDENTIAL = 2001

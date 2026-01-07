@@ -8,6 +8,7 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.CONFLICT: (409, "Conflict"),
     AppErr.INVALID: (400, "Invalid request"),
     AppErr.INTERNAL: (500, "Internal server error"),
+    AppErr.THROTTLE: (429, "Too many requests"),
 
     AppErr.USER_ALREADY_EXISTS: (409, "User already exists"),
     AppErr.CREATE_USER_PASSWORD_REQUIRED: (400, "Password is required"),

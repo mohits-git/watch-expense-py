@@ -72,4 +72,7 @@ async def offset_query(
 
 
 def handle_dynamo_error(err: ClientError, msg: str = "Operation failed") -> AppException:
+    code = err.response.get("Error", {}).get("Code", "")
+    if code == "ProvisionedThroughputExceededException":
+        return AppException(AppErr.THROTTLE)
     return AppException(AppErr.INTERNAL, msg, cause=err)
