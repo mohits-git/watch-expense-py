@@ -12,6 +12,6 @@ class ExpenseRepository(Protocol):
         self, filterOptions: ExpensesFilterOptions
     ) -> tuple[list[Expense], int]: ...
 
-    async def get_expense_sum(self,
-                              user_id: str = "",
-                              status: RequestStatus | None = None) -> float: ...
+    async def get_sum(
+        self, user_id: str = "", status: RequestStatus | None = None
+    ) -> float: ...
