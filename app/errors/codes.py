@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import enum
 
 
@@ -22,16 +21,10 @@ class AppErr(enum.IntEnum):
     CANNOT_DELETE_SELF = 3003
 
     # Project resource errors
+    PROJECT_ALREADY_EXISTS = 4001
     # Department resource error
+    DEPARTMENT_ALREADY_EXISTS = 5001
     # Expense resource error
+    EXPENSE_ALREADY_EXISTS = 6001
     # Advance resource error
-
-
-@dataclass
-class HTTPAppError:
-    http_status: int
-    message: str
-
-
-def get_http_app_error(err_code: AppErr) -> HTTPAppError:
-    return HTTPAppError(http_status=err_code, message=f"{err_code} - custom error message")
+    ADVANCE_ALREADY_EXISTS = 7001
