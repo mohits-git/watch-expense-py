@@ -55,15 +55,29 @@ class ProjectRepository:
         primary_key = self._get_project_primary_key(
             project.department_id, project.id)
         lookup_pk = self._get_project_lookup_primary_key(project.id)
-        async with self._table.batch_writer() as batch:
-            await batch.put_item(Item={
-                **primary_key,
-                **project.model_dump(by_alias=True),
-            })
-            await batch.put_item(Item={
-                **lookup_pk,
-                "DepartmentID": project.department_id,
-            })
+
+        await self._table.meta.client.transact_write_items(TransactItems=[
+            {
+                "Put": {
+                    "TableName": self._table_name,
+                    "Item": {
+                        **primary_key,
+                        **project.model_dump(by_alias=True),
+                    },
+                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+                }
+            },
+            {
+                "Put": {
+                    "TableName": self._table_name,
+                    "Item": {
+                        **lookup_pk,
+                        "DepartmentID": project.department_id,
+                    },
+                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+                }
+            }
+        ])
 
     async def get(self, project_id: str) -> Project | None:
         department_id = await self._get_dep_id_by_project_id(project_id)
@@ -135,6 +149,7 @@ class ProjectRepository:
                     "UpdateExpression": update_expr,
                     "ExpressionAttributeNames": expr_names,
                     "ExpressionAttributeValues": expr_values,
+                    "ConditionExpression": "attribute_exists(PK) AND attribute_exists(SK)",
                 }
             },
             {
@@ -143,7 +158,8 @@ class ProjectRepository:
                     "Item": {
                         **new_primary_key,
                         **project.model_dump(by_alias=True)
-                    }
+                    },
+                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)"
                 }
             }
         ]

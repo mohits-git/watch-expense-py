@@ -56,15 +56,28 @@ class ExpenseRepository:
         primary_key = self._get_expense_primary_key(
             expense.user_id, expense.id)
         lookup_pk = self._get_lookup_primary_key(expense.id)
-        async with self._table.batch_writer() as batch:
-            await batch.put_item(Item={
-                **primary_key,
-                **expense.model_dump(by_alias=True),
-            })
-            await batch.put_item(Item={
-                **lookup_pk,
-                "UserID": expense.user_id,
-            })
+        await self._table.meta.client.transact_write_items(TransactItems=[
+            {
+                "Put": {
+                    "TableName": self._table_name,
+                    "Item": {
+                        **primary_key,
+                        **expense.model_dump(by_alias=True),
+                    },
+                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                }
+            },
+            {
+                "Put": {
+                    "TableName": self._table_name,
+                    "Item": {
+                        **lookup_pk,
+                        "UserID": expense.user_id,
+                    },
+                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                }
+            },
+        ])
 
     async def get(self, expense_id: str) -> Expense | None:
         user_id = await self._get_user_id_by_expense_id(expense_id)
@@ -137,6 +150,7 @@ class ExpenseRepository:
             UpdateExpression=update_expr,
             ExpressionAttributeNames=expr_names,
             ExpressionAttributeValues=expr_values,
+            ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
         )
 
     async def get_expense_sum(self,

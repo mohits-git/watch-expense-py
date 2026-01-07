@@ -32,8 +32,7 @@ class AdvanceRepository:
 
     async def _get_user_id_by_advance_id(self, advance_id: str) -> str | None:
         lookup_primary_key = self._get_lookup_primary_key(advance_id)
-        response = await self._table.get_item(
-            Key=lookup_primary_key)
+        response = await self._table.get_item(Key=lookup_primary_key)
         if not response or "Item" not in response:
             return None
         return str(response["Item"]["UserID"])
@@ -49,20 +48,35 @@ class AdvanceRepository:
         if not advance.id:
             advance.id = str(uuid.uuid4())
         if not advance.created_at:
-            advance.created_at = int(time.time_ns()//1e6)
+            advance.created_at = int(time.time_ns() // 1e6)
             advance.updated_at = advance.created_at
-        primary_key = self._get_advance_primary_key(
-            advance.user_id, advance.id)
+        primary_key = self._get_advance_primary_key(advance.user_id, advance.id)
         lookup_pk = self._get_lookup_primary_key(advance.id)
-        async with self._table.batch_writer() as batch:
-            await batch.put_item(Item={
-                **primary_key,
-                **advance.model_dump(by_alias=True),
-            })
-            await batch.put_item(Item={
-                **lookup_pk,
-                "UserID": advance.user_id,
-            })
+
+        await self._table.meta.client.transact_write_items(
+            TransactItems=[
+                {
+                    "Put": {
+                        "TableName": self._table_name,
+                        "Item": {
+                            **primary_key,
+                            **advance.model_dump(by_alias=True),
+                        },
+                        "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                    }
+                },
+                {
+                    "Put": {
+                        "TableName": self._table_name,
+                        "Item": {
+                            **lookup_pk,
+                            "UserID": advance.user_id,
+                        },
+                        "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                    }
+                },
+            ]
+        )
 
     async def get(self, advance_id: str) -> Advance | None:
         user_id = await self._get_user_id_by_advance_id(advance_id)
@@ -74,87 +88,78 @@ class AdvanceRepository:
             return None
         return self._parse_advance_item(response["Item"])
 
-    async def get_all(self,
-                      filterOptions: AdvancesFilterOptions,
-                      ) -> tuple[list[Advance], int]:
+    async def get_all(
+        self,
+        filterOptions: AdvancesFilterOptions,
+    ) -> tuple[list[Advance], int]:
         query_input: QueryInputTableQueryTypeDef | None = {
-            "KeyConditionExpression": Key("PK").eq(self._pk) & Key(
-                "SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id}"),
+            "KeyConditionExpression": Key("PK").eq(self._pk)
+            & Key("SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id}"),
         }
 
         if filterOptions.status is not None:
-            query_input["FilterExpression"] = Attr(
-                'Status').eq(filterOptions.status)
+            query_input["FilterExpression"] = Attr("Status").eq(filterOptions.status)
 
         # Total count
         query_input["Select"] = "COUNT"
         count_response = await self._table.query(**query_input)
-        if 'Count' not in count_response:
+        if "Count" not in count_response:
             return ([], 0)
-        total_records = int(count_response['Count'])
+        total_records = int(count_response["Count"])
 
         # pagination / fast pagination
         query_input = await utils.offset_query(
-            self._table,
-            query_input,
-            filterOptions.page,
-            filterOptions.limit
+            self._table, query_input, filterOptions.page, filterOptions.limit
         )
         if query_input is None:
             return ([], 0)
 
         # query advances
-        query_input["Select"] = 'ALL_ATTRIBUTES'
+        query_input["Select"] = "ALL_ATTRIBUTES"
         query_input["Limit"] = filterOptions.limit
         response = await self._table.query(**query_input)
         if not response or "Items" not in response:
             raise Exception("Unable to fetch advances")
-        advances = [
-            self._parse_advance_item(item)
-            for item in response["Items"]
-        ]
+        advances = [self._parse_advance_item(item) for item in response["Items"]]
         return (advances, total_records)
 
     async def update(self, advance: Advance):
         existing_advance = await self.get(advance.id)
         if not existing_advance:
-            raise Exception(f"advance with advance_id: {
-                            advance.id} not found")
+            raise Exception(f"advance with advance_id: {advance.id} not found")
 
         advance.updated_at = int(time.time_ns() // 1e6)
-        exclude_fields = {'id', 'created_at'}
-        to_update = advance.model_dump(
-            by_alias=True, exclude=exclude_fields)
-        update_expr, expr_names, expr_values = utils.build_update_expression(
-            to_update)
+        exclude_fields = {"id", "created_at"}
+        to_update = advance.model_dump(by_alias=True, exclude=exclude_fields)
+        update_expr, expr_names, expr_values = utils.build_update_expression(to_update)
 
-        primary_key = self._get_advance_primary_key(
-            advance.user_id, advance.id)
+        primary_key = self._get_advance_primary_key(advance.user_id, advance.id)
         await self._table.update_item(
             Key=primary_key,
             UpdateExpression=update_expr,
             ExpressionAttributeNames=expr_names,
             ExpressionAttributeValues=expr_values,
+            ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
         )
 
-    async def get_sum_by_status(self,
-                                user_id: str = "",
-                                status: RequestStatus | None = None) -> float:
+    async def get_sum_by_status(
+        self, user_id: str = "", status: RequestStatus | None = None
+    ) -> float:
         queryInput: QueryInputTableQueryTypeDef = {
-            "KeyConditionExpression": Key("PK").eq(self._pk) & Key(
-                "SK").begins_with(f"{self._sk_prefix}{user_id}"),
+            "KeyConditionExpression": Key("PK").eq(self._pk)
+            & Key("SK").begins_with(f"{self._sk_prefix}{user_id}"),
             "ProjectionExpression": "Amount",
         }
 
         if status is not None:
-            queryInput["FilterExpression"] = Attr('Status').eq(status)
+            queryInput["FilterExpression"] = Attr("Status").eq(status)
 
         response = await self._table.query(**queryInput)
         if not response or "Items" not in response:
             raise Exception("Unable to fetch advances")
 
         advances_sum = 0.0
-        for item in response['Items']:
+        for item in response["Items"]:
             amount = item["Amount"]
             if amount and isinstance(amount, Decimal):
                 advances_sum += float(amount)
@@ -162,11 +167,11 @@ class AdvanceRepository:
 
     async def get_reconciled_advance_sum(self, user_id: str) -> float:
         queryInput: QueryInputTableQueryTypeDef = {
-            "KeyConditionExpression": Key("PK").eq(self._pk) & Key(
-                "SK").begins_with(f"{self._sk_prefix}{user_id}"),
+            "KeyConditionExpression": Key("PK").eq(self._pk)
+            & Key("SK").begins_with(f"{self._sk_prefix}{user_id}"),
             "ProjectionExpression": "Amount",
-            "FilterExpression": Attr("ReconciledExpenseID").exists(
-            ) & Attr("ReconciledExpenseID").size().gt(0)
+            "FilterExpression": Attr("ReconciledExpenseID").exists()
+            & Attr("ReconciledExpenseID").size().gt(0),
         }
 
         response = await self._table.query(**queryInput)
@@ -174,7 +179,7 @@ class AdvanceRepository:
             raise Exception("Unable to fetch advances")
 
         advances_sum = 0.0
-        for item in response['Items']:
+        for item in response["Items"]:
             amount = item["Amount"]
             if amount and isinstance(amount, Decimal):
                 advances_sum += float(amount)

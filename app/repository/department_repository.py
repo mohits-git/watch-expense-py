@@ -9,9 +9,7 @@ from boto3.dynamodb.conditions import Key
 
 
 class DepartmentRepository:
-    def __init__(self,
-                 ddb_table: Table,
-                 table_name: str):
+    def __init__(self, ddb_table: Table, table_name: str):
         self._table = ddb_table
         self._table_name = table_name
         self._pk = "DEPARTMENT"
@@ -34,13 +32,13 @@ class DepartmentRepository:
         if not department.id:
             department.id = str(uuid.uuid4())
         if not department.created_at:
-            department.created_at = int(time.time_ns()//1e6)
+            department.created_at = int(time.time_ns() // 1e6)
             department.updated_at = department.created_at
         primary_key = self._get_department_primary_key(department.id)
-        await self._table.put_item(Item={
-            **primary_key,
-            **department.model_dump(by_alias=True)
-        })
+        await self._table.put_item(
+            Item={**primary_key, **department.model_dump(by_alias=True)},
+            ConditionExpression="attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        )
 
     async def get(self, department_id: str) -> Department | None:
         primary_key = self._get_department_primary_key(department_id)
@@ -51,29 +49,23 @@ class DepartmentRepository:
 
     async def get_all(self) -> list[Department]:
         response = await self._table.query(
-            KeyConditionExpression=Key("PK").eq(
-                self._pk) & Key("SK").begins_with(self._sk_prefix)
+            KeyConditionExpression=Key("PK").eq(self._pk)
+            & Key("SK").begins_with(self._sk_prefix)
         )
         if not response or "Items" not in response:
             return []
-        departments = [
-            self._parse_department_item(item)
-            for item in response["Items"]
-        ]
+        departments = [self._parse_department_item(item) for item in response["Items"]]
         return departments
 
     async def update(self, department: Department) -> None:
         existing_department = await self.get(department.id)
         if not existing_department:
-            raise Exception(f"Department with department_id: {
-                            department.id} not found")
+            raise Exception(f"Department with department_id: {department.id} not found")
 
         department.updated_at = int(time.time_ns() // 1e6)
-        exclude_fields = {'id', 'created_at'}
-        to_update = department.model_dump(
-            by_alias=True, exclude=exclude_fields)
-        update_expr, expr_names, expr_values = utils.build_update_expression(
-            to_update)
+        exclude_fields = {"id", "created_at"}
+        to_update = department.model_dump(by_alias=True, exclude=exclude_fields)
+        update_expr, expr_names, expr_values = utils.build_update_expression(to_update)
 
         primary_key = self._get_department_primary_key(department.id)
         await self._table.update_item(
@@ -81,4 +73,5 @@ class DepartmentRepository:
             UpdateExpression=update_expr,
             ExpressionAttributeNames=expr_names,
             ExpressionAttributeValues=expr_values,
+            ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
         )
