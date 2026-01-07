@@ -36,32 +36,36 @@ class TestAdvanceRepository:
 
     @pytest.mark.asyncio
     async def test_save(self, advance_repository):
-        advance = Advance(
-            id="a97a4962-dcb9-43a4-aed4-2f5c23a352c0",
-            user_id="4e3e8d1a-99f1-4b50-997d-4dac70832fb6",
-            amount=Decimal("101"),
-            description="Testing Advance Request",
-            purpose="Testing Advance",
-            status=RequestStatus.Pending,
-            reconciled_expense_id="",
+        advance = Advance.model_validate(
+            {
+                "id": "a97a4962-dcb9-43a4-aed4-2f5c23a352c0",
+                "user_id": "4e3e8d1a-99f1-4b50-997d-4dac70832fb6",
+                "amount": Decimal("101"),
+                "description": "Testing Advance Request",
+                "purpose": "Testing Advance",
+                "status": RequestStatus.Pending,
+                "reconciled_expense_id": "",
+            }
         )
         await advance_repository.save(advance)
         pass
 
     @pytest.mark.asyncio
     async def test_update(self, advance_repository):
-        advance = Advance(
-            id="a97a4962-dcb9-43a4-aed4-2f5c23a352c0",
-            user_id="4e3e8d1a-99f1-4b50-997d-4dac70832fb6",
-            amount=Decimal("102"),
-            description="Testing Advance Request",
-            purpose="Testing Advance",
-            status=RequestStatus.Approved,
-            reconciled_expense_id="a97a4962-dcb9-43a4-aed4-2f5c23a352c0",
-            approved_at=int(time.time_ns()//1e6),
-            approved_by="589c725c-f47b-442c-bd41-b9687ae8d645",
-            reviewed_at=int(time.time_ns()//1e6),
-            reviewed_by="589c725c-f47b-442c-bd41-b9687ae8d645",
+        advance = Advance.model_validate(
+            {
+                "id": "a97a4962-dcb9-43a4-aed4-2f5c23a352c0",
+                "user_id": "4e3e8d1a-99f1-4b50-997d-4dac70832fb6",
+                "amount": Decimal("102"),
+                "description": "Testing Advance Request",
+                "purpose": "Testing Advance",
+                "status": RequestStatus.Approved,
+                "reconciled_expense_id": "a97a4962-dcb9-43a4-aed4-2f5c23a352c0",
+                "approved_at": int(time.time_ns() // 1e6),
+                "approved_by": "589c725c-f47b-442c-bd41-b9687ae8d645",
+                "reviewed_at": int(time.time_ns() // 1e6),
+                "reviewed_by": "589c725c-f47b-442c-bd41-b9687ae8d645",
+            }
         )
         await advance_repository.update(advance)
         print(advance_repository.get(advance.id))
@@ -70,17 +74,21 @@ class TestAdvanceRepository:
     @pytest.mark.asyncio
     async def test_get_sum_by_status(self, advance_repository):
         advance_sum_all = await advance_repository.get_sum_by_status()
-        advance_sum_pending = await advance_repository.get_sum_by_status(status=RequestStatus.Approved)
-        advance_sum_user = await advance_repository.get_sum_by_status(user_id="4e3e8d1a-99f1-4b50-997d-4dac70832fb6")
-        print('-------------')
+        advance_sum_pending = await advance_repository.get_sum_by_status(
+            status=RequestStatus.Approved
+        )
+        advance_sum_user = await advance_repository.get_sum_by_status(
+            user_id="4e3e8d1a-99f1-4b50-997d-4dac70832fb6"
+        )
+        print("-------------")
         print("ALL: ", advance_sum_all)
         print("Pending: ", advance_sum_pending)
         print("User: ", advance_sum_user)
-        print('-------------')
+        print("-------------")
         pass
 
     @pytest.mark.asyncio
     async def test_get_reconciled_advanced_sum(self, advance_repository):
         user_id = "4e3e8d1a-99f1-4b50-997d-4dac70832fb6"
-        print(await advance_repository.get_reconciled_advance_sum(user_id))
+        print(await advance_repository.get_advance_sum(user_id))
         pass

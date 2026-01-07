@@ -23,10 +23,12 @@ class TestDepartmentRepository:
 
     @pytest.mark.asyncio
     async def test_save(self, department_repository):
-        department = Department(
-            id="37d593c2-d9d2-4171-98de-e06dfb939b01",
-            name="Test2 Department",
-            budget=Decimal(10000.0),
+        department = Department.model_validate(
+            {
+                "id": "37d593c2-d9d2-4171-98de-e06dfb939b01",
+                "name": "Test2 Department",
+                "budget": Decimal(10000.0),
+            }
         )
         await department_repository.save(department)
         pass
@@ -39,11 +41,11 @@ class TestDepartmentRepository:
 
     @pytest.mark.asyncio
     async def test_update(self, department_repository):
-        department = Department(
-            id="d7e4071d-8ca1-4be7-9be3-bce3806f526a",
-            name="Testing Department",
-            budget=Decimal(20000.0),
-        )
+        department = Department.model_validate({
+            "id": "d7e4071d-8ca1-4be7-9be3-bce3806f526a",
+            "name": "Testing Department",
+            "budget": Decimal(20000.0),
+        })
         await department_repository.update(department)
         dep_id = "d7e4071d-8ca1-4be7-9be3-bce3806f526a"
         print(await department_repository.get(dep_id))

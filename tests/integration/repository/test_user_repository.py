@@ -31,30 +31,32 @@ class TestUserRepository:
 
     @pytest.mark.asyncio
     async def test_save(self, user_repository):
-        user = User(
-            id="dddf0940-55ae-4d28-91cf-acbf01c1e7a9",
-            employee_id="emp5",
-            name="Testing5 User",
-            password="hashed_password",
-            email="johntest5@test.com",
-            role=UserRole.Employee,
-            project_id="proj1",
-            department_id="dep1",
+        user = User.model_validate(
+            {
+                "id": "dddf0940-55ae-4d28-91cf-acbf01c1e7a9",
+                "employee_id": "emp5",
+                "name": "Testing5 User",
+                "password": "hashed_password",
+                "email": "johntest5@test.com",
+                "role": UserRole.Employee,
+                "project_id": "proj1",
+                "department_id": "dep1",
+            }
         )
         await user_repository.save(user)
         pass
 
     @pytest.mark.asyncio
     async def test_update(self, user_repository):
-        user = User(
-            id="dddf0940-55ae-4d28-91cf-acbf01c1e7a9",
-            employee_id="emp2",
-            name="Testing User",
-            password="hashed_password",
-            email="johntest5@test.com",
-            role=UserRole.Employee,
-            project_id="proj2",
-            department_id="dep2",
-        )
+        user = User.model_validate({
+            "id": "dddf0940-55ae-4d28-91cf-acbf01c1e7a9",
+            "employee_id": "emp2",
+            "name": "Testing User",
+            "password": "hashed_password",
+            "email": "johntest5@test.com",
+            "role": UserRole.Employee,
+            "project_id": "proj2",
+            "department_id": "dep2",
+        })
         await user_repository.update(user)
         pass
