@@ -16,7 +16,8 @@ from app.models.user import UserRole
 
 project_router = APIRouter(
     prefix="/admin/projects",
-    dependencies=[Depends(required_roles([UserRole.Admin]))]
+    dependencies=[Depends(required_roles([UserRole.Admin]))],
+    tags=["Projects"]
 )
 
 

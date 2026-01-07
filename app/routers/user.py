@@ -18,6 +18,7 @@ from app.models.user import User, UserRole
 user_router = APIRouter(
     prefix="/users",
     dependencies=[Depends(required_roles([UserRole.Employee, UserRole.Admin]))],
+    tags=["Users"]
 )
 _user_admin_only = APIRouter(dependencies=[Depends(required_roles([UserRole.Admin]))])
 

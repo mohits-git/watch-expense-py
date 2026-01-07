@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from app.dependencies.services import AdvanceServiceInstance
 from app.models.advance import Advance, AdvancesFilterOptions
-from dtos.advance import (
+from app.dtos.advance import (
     CreateAdvanceResponse,
     AdvanceDTO,
     GetAdvanceResponse,
@@ -17,7 +17,8 @@ from app.dependencies.auth import AuthenticatedUser, authenticated_user
 
 
 advance_router = APIRouter(
-    prefix="/advance-request", dependencies=[Depends(authenticated_user)]
+    prefix="/advance-request", dependencies=[Depends(authenticated_user)],
+    tags=["Advances"]
 )
 
 

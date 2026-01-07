@@ -5,7 +5,7 @@ from app.dtos.auth import LoginRequest, LoginResponse
 from app.dtos.user import UserDTO
 
 
-auth_router = APIRouter(prefix="/auth")
+auth_router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @auth_router.post('/login', response_model=LoginResponse)

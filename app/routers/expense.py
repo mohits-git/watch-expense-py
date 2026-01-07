@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from app.dependencies.services import ExpenseServiceInstance
 from app.models.expense import Expense, ExpensesFilterOptions
-from dtos.expense import (
+from app.dtos.expense import (
     CreateExpenseResponse,
     ExpenseDTO,
     GetExpenseResponse,
@@ -18,7 +18,8 @@ from app.models.user import UserRole
 
 
 expense_router = APIRouter(
-    prefix="/expenses", dependencies=[Depends(required_roles([UserRole.Admin]))]
+    prefix="/expenses", dependencies=[Depends(required_roles([UserRole.Admin]))],
+    tags=["Expenses"]
 )
 
 
