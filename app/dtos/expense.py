@@ -74,7 +74,6 @@ class CreateExpenseRequest(BaseModel):
 class CreateExpenseResponse(BaseResponse):
     class Data(BaseModel):
         id: str
-
     data: Data
 
 
@@ -87,6 +86,10 @@ class UpdateExpenseStatusRequest(BaseModel):
 
 
 class GetExpenseResponse(BaseResponse):
+    data: ExpenseDTO
+
+
+class GetAllExpensesResponse(BaseResponse):
     class Data(BaseModel):
         total_expenses: int = Field(alias="totalExpenses")
         expenses: list[ExpenseDTO] = Field(alias='expenses')
@@ -95,17 +98,18 @@ class GetExpenseResponse(BaseResponse):
                                   validate_by_alias=True,
                                   serialize_by_alias=True,
                                   extra="ignore")
-
     data: Data
 
 
-class ExpenseSummaryDTO(BaseModel):
-    total_expenses: Decimal = Field(alias="totalExpenses")
-    pending_expense: Decimal = Field(alias="pendingExpense")
-    reimbursed_expense: Decimal = Field(alias="reimbursedExpense")
-    rejected_expense: Decimal = Field(alias="rejectedExpense")
+class GetExpenseSummaryResponse(BaseResponse):
+    class Data(BaseModel):
+        total_expenses: Decimal = Field(alias="totalExpenses")
+        pending_expense: Decimal = Field(alias="pendingExpense")
+        reimbursed_expense: Decimal = Field(alias="reimbursedExpense")
+        rejected_expense: Decimal = Field(alias="rejectedExpense")
 
-    model_config = ConfigDict(validate_by_name=True,
-                              validate_by_alias=True,
-                              serialize_by_alias=True,
-                              extra="ignore")
+        model_config = ConfigDict(validate_by_name=True,
+                                  validate_by_alias=True,
+                                  serialize_by_alias=True,
+                                  extra="ignore")
+    data: Data

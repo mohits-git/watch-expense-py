@@ -54,6 +54,10 @@ class UpdateAdvanceStatusRequest(BaseModel):
 
 
 class GetAdvanceResponse(BaseResponse):
+    data: AdvanceDTO
+
+
+class GetAllAdvancesResponse(BaseResponse):
     class Data(BaseModel):
         total_advances: int = Field(alias="totalAdvances")
         advances: list[AdvanceDTO] = Field(alias='advances')
@@ -66,12 +70,14 @@ class GetAdvanceResponse(BaseResponse):
     data: Data
 
 
-class AdvanceSummaryDTO(BaseModel):
-    approved: Decimal = Field(alias="approved")
-    reconciled: Decimal = Field(alias="reconciled")
-    pending: Decimal = Field(alias="pendingReconciliation")
-    rejected: Decimal = Field(alias="rejectedAdvance")
-    # pydantic config
-    model_config = ConfigDict(validate_by_name=True,
-                              validate_by_alias=True,
-                              serialize_by_alias=True)
+class GetAdvanceSummaryResponse(BaseResponse):
+    class Data(BaseModel):
+        approved: Decimal = Field(alias="approved")
+        reconciled: Decimal = Field(alias="reconciled")
+        pending: Decimal = Field(alias="pendingReconciliation")
+        rejected: Decimal = Field(alias="rejectedAdvance")
+        # pydantic config
+        model_config = ConfigDict(validate_by_name=True,
+                                  validate_by_alias=True,
+                                  serialize_by_alias=True)
+    data: Data
