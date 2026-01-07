@@ -142,7 +142,7 @@ class AdvanceRepository:
             ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
         )
 
-    async def get_sum_by_status(
+    async def get_sum(
         self, user_id: str = "", status: RequestStatus | None = None
     ) -> float:
         queryInput: QueryInputTableQueryTypeDef = {
@@ -165,7 +165,7 @@ class AdvanceRepository:
                 advances_sum += float(amount)
         return advances_sum
 
-    async def get_reconciled_advance_sum(self, user_id: str) -> float:
+    async def get_reconciled_sum(self, user_id: str) -> float:
         queryInput: QueryInputTableQueryTypeDef = {
             "KeyConditionExpression": Key("PK").eq(self._pk)
             & Key("SK").begins_with(f"{self._sk_prefix}{user_id}"),

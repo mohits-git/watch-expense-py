@@ -11,9 +11,7 @@ from app.repository import utils
 
 
 class ExpenseRepository:
-    def __init__(self,
-                 ddb_table: Table,
-                 table_name: str):
+    def __init__(self, ddb_table: Table, table_name: str):
         self._table = ddb_table
         self._table_name = table_name
         self._pk = "EXPENSE"
@@ -34,8 +32,7 @@ class ExpenseRepository:
 
     async def _get_user_id_by_expense_id(self, expense_id: str) -> str | None:
         lookup_primary_key = self._get_lookup_primary_key(expense_id)
-        response = await self._table.get_item(
-            Key=lookup_primary_key)
+        response = await self._table.get_item(Key=lookup_primary_key)
         if not response or "Item" not in response:
             return None
         return str(response["Item"]["UserID"])
@@ -51,33 +48,34 @@ class ExpenseRepository:
         if not expense.id:
             expense.id = str(uuid.uuid4())
         if not expense.created_at:
-            expense.created_at = int(time.time_ns()//1e6)
+            expense.created_at = int(time.time_ns() // 1e6)
             expense.updated_at = expense.created_at
-        primary_key = self._get_expense_primary_key(
-            expense.user_id, expense.id)
+        primary_key = self._get_expense_primary_key(expense.user_id, expense.id)
         lookup_pk = self._get_lookup_primary_key(expense.id)
-        await self._table.meta.client.transact_write_items(TransactItems=[
-            {
-                "Put": {
-                    "TableName": self._table_name,
-                    "Item": {
-                        **primary_key,
-                        **expense.model_dump(by_alias=True),
-                    },
-                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-                }
-            },
-            {
-                "Put": {
-                    "TableName": self._table_name,
-                    "Item": {
-                        **lookup_pk,
-                        "UserID": expense.user_id,
-                    },
-                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-                }
-            },
-        ])
+        await self._table.meta.client.transact_write_items(
+            TransactItems=[
+                {
+                    "Put": {
+                        "TableName": self._table_name,
+                        "Item": {
+                            **primary_key,
+                            **expense.model_dump(by_alias=True),
+                        },
+                        "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                    }
+                },
+                {
+                    "Put": {
+                        "TableName": self._table_name,
+                        "Item": {
+                            **lookup_pk,
+                            "UserID": expense.user_id,
+                        },
+                        "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+                    }
+                },
+            ]
+        )
 
     async def get(self, expense_id: str) -> Expense | None:
         user_id = await self._get_user_id_by_expense_id(expense_id)
@@ -89,62 +87,52 @@ class ExpenseRepository:
             return None
         return self._parse_expense_item(response["Item"])
 
-    async def get_all(self,
-                      filterOptions: ExpensesFilterOptions,
-                      ) -> tuple[list[Expense], int]:
+    async def get_all(
+        self,
+        filterOptions: ExpensesFilterOptions,
+    ) -> tuple[list[Expense], int]:
         query_input: QueryInputTableQueryTypeDef | None = {
-            "KeyConditionExpression": Key("PK").eq(self._pk) & Key(
-                "SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id}"),
+            "KeyConditionExpression": Key("PK").eq(self._pk)
+            & Key("SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id}"),
         }
 
         if filterOptions.status is not None:
-            query_input["FilterExpression"] = Attr(
-                'Status').eq(filterOptions.status)
+            query_input["FilterExpression"] = Attr("Status").eq(filterOptions.status)
 
         # Total count
         query_input["Select"] = "COUNT"
         count_response = await self._table.query(**query_input)
-        if 'Count' not in count_response:
+        if "Count" not in count_response:
             return ([], 0)
-        total_records = int(count_response['Count'])
+        total_records = int(count_response["Count"])
 
         # pagination / fast pagination
         query_input = await utils.offset_query(
-            self._table,
-            query_input,
-            filterOptions.page,
-            filterOptions.limit
+            self._table, query_input, filterOptions.page, filterOptions.limit
         )
         if query_input is None:
             return ([], 0)
 
         # query expenses
-        query_input["Select"] = 'ALL_ATTRIBUTES'
+        query_input["Select"] = "ALL_ATTRIBUTES"
         query_input["Limit"] = filterOptions.limit
         response = await self._table.query(**query_input)
         if not response or "Items" not in response:
             raise Exception("Unable to fetch expenses")
-        expenses = [
-            self._parse_expense_item(item)
-            for item in response["Items"]
-        ]
+        expenses = [self._parse_expense_item(item) for item in response["Items"]]
         return (expenses, total_records)
 
     async def update(self, expense: Expense):
         existing_expense = await self.get(expense.id)
         if not existing_expense:
-            raise Exception(f"expense with expense_id: {
-                            expense.id} not found")
+            raise Exception(f"expense with expense_id: {expense.id} not found")
 
         expense.updated_at = int(time.time_ns() // 1e6)
-        exclude_fields = {'id', 'created_at', 'user_id'}
-        to_update = expense.model_dump(
-            by_alias=True, exclude=exclude_fields)
-        update_expr, expr_names, expr_values = utils.build_update_expression(
-            to_update)
+        exclude_fields = {"id", "created_at", "user_id"}
+        to_update = expense.model_dump(by_alias=True, exclude=exclude_fields)
+        update_expr, expr_names, expr_values = utils.build_update_expression(to_update)
 
-        primary_key = self._get_expense_primary_key(
-            expense.user_id, expense.id)
+        primary_key = self._get_expense_primary_key(expense.user_id, expense.id)
         await self._table.update_item(
             Key=primary_key,
             UpdateExpression=update_expr,
@@ -153,24 +141,24 @@ class ExpenseRepository:
             ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
         )
 
-    async def get_expense_sum(self,
-                              user_id: str = "",
-                              status: RequestStatus | None = None) -> float:
+    async def get_sum(
+        self, user_id: str = "", status: RequestStatus | None = None
+    ) -> float:
         queryInput: QueryInputTableQueryTypeDef = {
-            "KeyConditionExpression": Key("PK").eq(self._pk) & Key(
-                "SK").begins_with(f"{self._sk_prefix}{user_id}"),
+            "KeyConditionExpression": Key("PK").eq(self._pk)
+            & Key("SK").begins_with(f"{self._sk_prefix}{user_id}"),
             "ProjectionExpression": "Amount",
         }
 
         if status is not None:
-            queryInput["FilterExpression"] = Attr('Status').eq(status)
+            queryInput["FilterExpression"] = Attr("Status").eq(status)
 
         response = await self._table.query(**queryInput)
         if not response or "Items" not in response:
             raise Exception("Unable to fetch expenses")
 
         expenses_sum = 0.0
-        for item in response['Items']:
+        for item in response["Items"]:
             amount = item["Amount"]
             if amount and isinstance(amount, Decimal):
                 expenses_sum += float(amount)

@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
-from app.dependencies.auth import AuthenticatedUser, admin_only
+from app.dependencies.auth import AuthenticatedUser, admin_only, authenticated_user
 from app.dependencies.services import UserServiceInstance
 from app.dtos.response import BaseResponse
 from app.dtos.user import (
@@ -17,31 +17,26 @@ from app.dtos.user import (
 from app.models.user import User
 
 
-user_router = APIRouter(prefix="/users")
+user_router = APIRouter(prefix="/users", dependencies=[Depends(authenticated_user)])
 _user_admin_only = APIRouter(dependencies=[Depends(admin_only)])
 
 
 @_user_admin_only.get("/", response_model=GetAllUsersResponse)
-async def handle_get_all_users(
-    curr_user: AuthenticatedUser, user_service: UserServiceInstance
-):
-    users = await user_service.get_all_users(curr_user)
+async def handle_get_all_users(user_service: UserServiceInstance):
+    users = await user_service.get_all_users()
     return GetAllUsersResponse(
         status=status.HTTP_200_OK,
         message="Fetched all users successfully",
-        data=[
-            UserDTO(**user.model_dump()) for user in users
-        ],
+        data=[UserDTO(**user.model_dump()) for user in users],
     )
 
 
 @_user_admin_only.get("/{user_id}", response_model=GetUserResponse)
 async def handle_get_user_by_id(
-    curr_user: AuthenticatedUser,
     user_id: Annotated[str, Path()],
     user_service: UserServiceInstance,
 ):
-    user = await user_service.get_user_by_id(curr_user, user_id)
+    user = await user_service.get_user_by_id(user_id)
     return GetUserResponse(
         status=status.HTTP_200_OK,
         message="Fetched user successfully",
@@ -49,35 +44,33 @@ async def handle_get_user_by_id(
     )
 
 
-@_user_admin_only.post("/",
-                      response_model=CreateUserResponse,
-                      status_code=status.HTTP_201_CREATED)
+@_user_admin_only.post(
+    "/", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED
+)
 async def handle_create_user(
     user_data: CreateUserRequest,
-    curr_user: AuthenticatedUser,
     user_service: UserServiceInstance,
 ):
     user = User(**user_data.model_dump(by_alias=False))
-    user_id = await user_service.create_user(curr_user, user)
+    user_id = await user_service.create_user(user)
     return CreateUserResponse(
         status=status.HTTP_201_CREATED,
         message="User created successfully",
-        data=CreateUserResponseData(id=user_id)
+        data=CreateUserResponseData(id=user_id),
     )
 
 
-@_user_admin_only.put("/{user_id}",
-                     response_model=BaseResponse,
-                     response_model_exclude_none=True)
+@_user_admin_only.put(
+    "/{user_id}", response_model=BaseResponse, response_model_exclude_none=True
+)
 async def handle_update_user(
     user_id: str,
     user_data: UpdateUserRequest,
-    curr_user: AuthenticatedUser,
     user_service: UserServiceInstance,
 ):
     user_dict = user_data.model_dump(by_alias=False)
     user = User.model_validate({"id": user_id, **user_dict})
-    await user_service.update_user(curr_user, user)
+    await user_service.update_user(user)
     return BaseResponse(
         status=status.HTTP_200_OK,
         message="User updated successfully",
@@ -91,19 +84,20 @@ async def handle_delete_user(
     user_id: Annotated[str, Path()],
     user_service: UserServiceInstance,
 ):
-    await user_service.delete_user(curr_user, user_id)
+    await user_service.delete_user(curr_user.user_id, user_id)
 
 
-@user_router.get("/budget", response_model=GetUserBudgetResponse, dependencies=[])
+@user_router.get("/budget", response_model=GetUserBudgetResponse)
 async def handle_get_user_budget(
     curr_user: AuthenticatedUser,
     user_service: UserServiceInstance,
 ):
-    budget = await user_service.get_user_budget(curr_user)
+    budget = await user_service.get_user_budget(curr_user.user_id)
     return GetUserBudgetResponse(
         status=status.HTTP_200_OK,
         message="Fetched user budget successfully",
-        data=GetUserBudgetResponseData(budget=budget)
+        data=GetUserBudgetResponseData(budget=budget),
     )
+
 
 user_router.include_router(_user_admin_only)
