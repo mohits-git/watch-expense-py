@@ -1,9 +1,12 @@
 import uuid
 import time
 
+from botocore.utils import ClientError
 from pydantic import ValidationError
 from types_aiobotocore_dynamodb.service_resource import Table
 from types_aiobotocore_dynamodb.type_defs import TransactWriteItemTypeDef
+from app.errors.app_exception import AppException
+from app.errors.codes import AppErr
 from app.models.project import Project
 from boto3.dynamodb.conditions import Key
 from app.repository import utils
@@ -35,16 +38,22 @@ class ProjectRepository:
         try:
             return Project.model_validate(item, by_alias=True)
         except ValidationError as err:
-            print("Error constructing the model from fetched data: ", err)
-            raise err
+            raise AppException(
+                AppErr.INTERNAL,
+                "Failed to parse user from database",
+                cause=err,
+            )
 
     async def _get_dep_id_by_project_id(self, project_id: str) -> str | None:
-        primary_key = self._get_project_lookup_primary_key(project_id)
-        response = await self._table.get_item(
-            Key=primary_key)
-        if not response or "Item" not in response:
-            return None
-        return str(response["Item"]["DepartmentID"])
+        try:
+            primary_key = self._get_project_lookup_primary_key(project_id)
+            response = await self._table.get_item(
+                Key=primary_key)
+            if not response or "Item" not in response:
+                return None
+            return str(response["Item"]["DepartmentID"])
+        except ClientError as err:
+            raise utils.handle_dynamo_error(err, "Failed to get project data")
 
     async def save(self, project: Project) -> None:
         if not project.id:
@@ -56,7 +65,7 @@ class ProjectRepository:
             project.department_id, project.id)
         lookup_pk = self._get_project_lookup_primary_key(project.id)
 
-        await self._table.meta.client.transact_write_items(TransactItems=[
+        transact_items: list[TransactWriteItemTypeDef] = [
             {
                 "Put": {
                     "TableName": self._table_name,
@@ -77,30 +86,50 @@ class ProjectRepository:
                     "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)"
                 }
             }
-        ])
+        ]
+        try:
+            await self._table.meta.client.transact_write_items(TransactItems=transact_items)
+        except self._table.meta.client.exceptions.TransactionCanceledException as err:
+            reasons = err.response.get("CancellationReasons", [])
+            codes = {r.get("Code") for r in reasons}
+            if "ConditionalCheckFailed" in codes:
+                raise AppException(
+                    AppErr.PROJECT_ALREADY_EXISTS,
+                    "Project already exists",
+                    cause=err,
+                )
+            raise utils.handle_dynamo_error(err, "Failed to save project")
+        except ClientError as err:
+            raise utils.handle_dynamo_error(err, "Failed to save project")
 
     async def get(self, project_id: str) -> Project | None:
-        department_id = await self._get_dep_id_by_project_id(project_id)
-        if not department_id:
-            return None
-        primary_key = self._get_project_primary_key(department_id, project_id)
-        response = await self._table.get_item(Key=primary_key)
-        if not response or "Item" not in response:
-            return None
-        return self._parse_project_item(response["Item"])
+        try:
+            department_id = await self._get_dep_id_by_project_id(project_id)
+            if not department_id:
+                return None
+            primary_key = self._get_project_primary_key(department_id, project_id)
+            response = await self._table.get_item(Key=primary_key)
+            if not response or "Item" not in response:
+                return None
+            return self._parse_project_item(response["Item"])
+        except ClientError as err:
+            raise utils.handle_dynamo_error(err, "Failed to get project")
 
     async def get_all(self) -> list[Project]:
-        response = await self._table.query(
-            KeyConditionExpression=Key("PK").eq(
-                self._pk) & Key("SK").begins_with(self._sk_prefix)
-        )
-        if not response or "Items" not in response:
-            raise Exception("Unable to fetch projects")
-        projects = [
-            self._parse_project_item(item)
-            for item in response["Items"]
-        ]
-        return projects
+        try:
+            response = await self._table.query(
+                KeyConditionExpression=Key("PK").eq(
+                    self._pk) & Key("SK").begins_with(self._sk_prefix)
+            )
+            if not response or "Items" not in response:
+                raise Exception("Unable to fetch projects")
+            projects = [
+                self._parse_project_item(item)
+                for item in response["Items"]
+            ]
+            return projects
+        except ClientError as err:
+            raise utils.handle_dynamo_error(err, "Failed to fetch projects")
 
     async def update(self, project: Project) -> None:
         existing_project = await self.get(project.id)
@@ -119,12 +148,16 @@ class ProjectRepository:
                 to_update)
             primary_key = self._get_project_primary_key(
                 prev_dep_id, project.id)
-            await self._table.update_item(
-                Key=primary_key,
-                UpdateExpression=update_expr,
-                ExpressionAttributeNames=expr_names,
-                ExpressionAttributeValues=expr_values,
-            )
+            try:
+                await self._table.update_item(
+                    Key=primary_key,
+                    UpdateExpression=update_expr,
+                    ExpressionAttributeNames=expr_names,
+                    ExpressionAttributeValues=expr_values,
+                )
+            except ClientError as err:
+                raise utils.handle_dynamo_error(
+                    err, "Failed to update project")
             return
 
         primary_key = self._get_project_primary_key(prev_dep_id, project.id)
@@ -135,7 +168,7 @@ class ProjectRepository:
         update_expr, expr_names, expr_values = utils.build_update_expression(
             to_update)
         project.created_at = existing_project.created_at
-        transaction_items: list[TransactWriteItemTypeDef] = [
+        transact_items: list[TransactWriteItemTypeDef] = [
             {
                 "Delete": {
                     "TableName": self._table_name,
@@ -164,5 +197,17 @@ class ProjectRepository:
             }
         ]
 
-        await self._table.meta.client.transact_write_items(
-            TransactItems=transaction_items)
+        try:
+            await self._table.meta.client.transact_write_items(TransactItems=transact_items)
+        except self._table.meta.client.exceptions.TransactionCanceledException as err:
+            reasons = err.response.get("CancellationReasons", [])
+            codes = {r.get("Code") for r in reasons}
+            if "ConditionalCheckFailed" in codes:
+                raise AppException(
+                    AppErr.NOT_FOUND,
+                    "User not found",
+                    cause=err,
+                )
+            raise utils.handle_dynamo_error(err, "Failed to update project")
+        except ClientError as err:
+            raise utils.handle_dynamo_error(err, "Failed to update project")

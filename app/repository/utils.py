@@ -1,5 +1,9 @@
+from botocore.exceptions import ClientError
 from types_aiobotocore_dynamodb.service_resource import Table
 from types_aiobotocore_dynamodb.type_defs import QueryInputTableQueryTypeDef
+
+from app.errors.app_exception import AppException
+from app.errors.codes import AppErr
 
 
 def build_update_expression(updates: dict) -> tuple[str, dict, dict]:
@@ -65,3 +69,7 @@ async def offset_query(
         query_input["ProjectionExpression"] = prev_projection
     query_input["ExclusiveStartKey"] = last_evaluated_key
     return query_input
+
+
+def handle_dynamo_error(err: ClientError, msg: str = "Operation failed") -> AppException:
+    return AppException(AppErr.INTERNAL, msg, cause=err)
