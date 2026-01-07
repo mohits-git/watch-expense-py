@@ -2,7 +2,7 @@ import uuid
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.interfaces import PasswordHasher, UserRepository, ProjectRepository
-from app.models.user import User, UserClaims, UserRole
+from app.models.user import User
 
 
 class UserService:
@@ -16,9 +16,7 @@ class UserService:
         self.user_repo = user_repo
         self.project_repo = project_repo
 
-    async def create_user(self, curr_user: UserClaims, user: User) -> str:
-        if curr_user.role != UserRole.Admin:
-            raise AppException(AppErr.ADMIN_ONLY)
+    async def create_user(self, user: User) -> str:
         if not user.password:
             raise AppException(AppErr.CREATE_USER_PASSWORD_REQUIRED)
         hashed_password = self.password_hasher.hash_password(user.password)
@@ -27,36 +25,28 @@ class UserService:
         await self.user_repo.save(user)
         return user.id
 
-    async def update_user(self, curr_user: UserClaims, user: User) -> None:
-        if curr_user.role != UserRole.Admin:
-            raise AppException(AppErr.ADMIN_ONLY)
+    async def update_user(self, user: User) -> None:
         if user.password != "":
             hashed_password = self.password_hasher.hash_password(user.password)
             user.password = hashed_password
         await self.user_repo.update(user)
 
-    async def get_user_by_id(self, curr_user: UserClaims, user_id: str) -> User:
-        if curr_user.role != UserRole.Admin and curr_user.user_id != user_id:
-            raise AppException(AppErr.ADMIN_ONLY)
+    async def get_user_by_id(self, user_id: str) -> User:
         user = await self.user_repo.get(user_id)
         if not user:
             raise AppException(AppErr.USER_NOT_FOUND)
         return user
 
-    async def get_all_users(self, curr_user: UserClaims) -> list[User]:
-        if curr_user.role != UserRole.Admin:
-            raise AppException(AppErr.ADMIN_ONLY)
+    async def get_all_users(self) -> list[User]:
         return await self.user_repo.get_all()
 
-    async def delete_user(self, curr_user: UserClaims, user_id: str):
-        if curr_user.role != UserRole.Admin:
-            raise AppException(AppErr.ADMIN_ONLY)
-        if curr_user.user_id == user_id:
+    async def delete_user(self, curr_user_id: str, user_id: str):
+        if curr_user_id == user_id:
             raise AppException(AppErr.CANNOT_DELETE_SELF)
         await self.user_repo.delete(user_id)
 
-    async def get_user_budget(self, curr_user: UserClaims) -> float:
-        user = await self.user_repo.get(curr_user.user_id)
+    async def get_user_budget(self, user_id: str) -> float:
+        user = await self.user_repo.get(user_id)
         if user is None:
             raise AppException(AppErr.USER_NOT_FOUND)
 
