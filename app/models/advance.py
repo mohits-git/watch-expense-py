@@ -33,7 +33,14 @@ class AdvancesFilterOptions(BaseModel):
     user_id: str | None = Field(default=None)
     page: int = Field(default=1)
     limit: int = Field(default=10)
-    status: RequestStatus | None = Field(default=None)
+    status: Annotated[RequestStatus | None, BeforeValidator(
+        lambda s: None if s == "" else s
+    )] = Field(default=None)
+    model_config = ConfigDict(validate_by_name=True,
+                              validate_by_alias=True,
+                              serialize_by_alias=False,
+                              use_enum_values=True,
+                              extra="ignore")
 
 
 class AdvanceSummary(BaseModel):
