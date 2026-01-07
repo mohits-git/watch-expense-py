@@ -48,8 +48,12 @@ class ExpenseService:
         await self.expense_repo.update(expense)
 
     async def get_all_expenses(
-        self, filter_options: ExpensesFilterOptions
+        self,
+        curr_user: UserClaims,
+        filter_options: ExpensesFilterOptions
     ) -> tuple[list[Expense], int]:
+        if curr_user.role != UserRole.Admin:
+            filter_options.user_id = curr_user.user_id
         expenses, total_count = await self.expense_repo.get_all(filter_options)
         return expenses, total_count
 
@@ -68,7 +72,10 @@ class ExpenseService:
             existing_expense.reviewed_at = int(time.time())
         await self.expense_repo.update(existing_expense)
 
-    async def get_expense_summary(self, user_id: str) -> ExpenseSummary:
+    async def get_expense_summary(self, curr_user: UserClaims) -> ExpenseSummary:
+        user_id = ""
+        if curr_user.role != UserRole.Admin:
+            user_id = curr_user.user_id
         results = await asyncio.gather(
             self.expense_repo.get_sum(user_id),
             self.expense_repo.get_sum(user_id, RequestStatus.Approved),
