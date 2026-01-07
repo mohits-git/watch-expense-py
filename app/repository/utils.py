@@ -39,8 +39,9 @@ async def offset_query(
     if page <= 0:
         return query_input
 
-    prev_select = query_input["Select"] if "Select" in query_input else None
-    prev_projection = query_input["ProjectionExpression"] if "ProjectionExpression" in query_input else None
+    prev_select = query_input.get("Select", None)
+    prev_projection = query_input.get("ProjectionExpression", None)
+    prev_limit = query_input.get("Limit", None)
 
     query_input["Select"] = "SPECIFIC_ATTRIBUTES"
     query_input["ProjectionExpression"] = "PK, SK"
@@ -63,10 +64,15 @@ async def offset_query(
     if last_evaluated_key is None:
         return None
 
+    del query_input["Select"]
+    del query_input["ProjectionExpression"]
+    del query_input["Limit"]
     if prev_select is not None:
         query_input["Select"] = prev_select
     if prev_projection is not None:
         query_input["ProjectionExpression"] = prev_projection
+    if prev_limit is not None:
+        query_input["Limit"] = prev_limit
     query_input["ExclusiveStartKey"] = last_evaluated_key
     return query_input
 

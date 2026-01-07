@@ -119,7 +119,7 @@ class ExpenseRepository:
         try:
             query_input: QueryInputTableQueryTypeDef | None = {
                 "KeyConditionExpression": Key("PK").eq(self._pk)
-                & Key("SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id}"),
+                & Key("SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id or ''}"),
             }
 
             if filterOptions.status is not None:
