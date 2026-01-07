@@ -11,18 +11,26 @@ from app.models.expense import (
     ExpensesFilterOptions,
     RequestStatus,
 )
+from app.models.user import UserClaims, UserRole
 
 
 class ExpenseService:
     def __init__(self, expense_repo: ExpenseRepository):
         self.expense_repo = expense_repo
 
-    async def get_expense_by_id(self, expense_id: str) -> Expense:
+    async def get_expense_by_id(
+            self, curr_user: UserClaims, expense_id: str) -> Expense:
         expense = await self.expense_repo.get(expense_id)
         if not expense:
             raise AppException(
-                AppErr.EXPENSE_NOT_FOUND, f"Expense with ID {expense_id} not found"
+                AppErr.EXPENSE_NOT_FOUND, f"expense with ID {
+                    expense_id} not found"
             )
+        if (
+            expense.user_id != curr_user.user_id
+            and curr_user.role != UserRole.Admin
+        ):
+            raise AppException(AppErr.FORBIDDEN)
         return expense
 
     async def create_expense(self, expense: Expense) -> str:
@@ -30,12 +38,19 @@ class ExpenseService:
         await self.expense_repo.save(expense)
         return expense.id
 
-    async def update_expense(self, expense: Expense) -> None:
+    async def update_expense(self, curr_user: UserClaims, expense: Expense) -> None:
         existing_expense = await self.expense_repo.get(expense.id)
         if not existing_expense:
             raise AppException(
-                AppErr.EXPENSE_NOT_FOUND, f"Expense with ID {expense.id} not found"
+                AppErr.EXPENSE_NOT_FOUND, f"Expense with ID {
+                    expense.id} not found"
             )
+        if (
+            existing_expense.user_id != curr_user.user_id
+            and curr_user.user_id != UserRole.Admin
+        ):
+            raise AppException(AppErr.FORBIDDEN)
+
         await self.expense_repo.update(expense)
 
     async def get_all_expenses(
@@ -59,7 +74,7 @@ class ExpenseService:
             existing_expense.reviewed_at = int(time.time())
         await self.expense_repo.update(existing_expense)
 
-    async def get_expense_summary(self, user_id: str = "") -> ExpenseSummary:
+    async def get_expense_summary(self, user_id: str) -> ExpenseSummary:
         results = await asyncio.gather(
             self.expense_repo.get_sum(user_id),
             self.expense_repo.get_sum(user_id, RequestStatus.Approved),

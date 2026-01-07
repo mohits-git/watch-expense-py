@@ -7,18 +7,22 @@ from app.errors.codes import AppErr
 from app.interfaces import AdvanceRepository
 from app.models.advance import Advance, AdvanceSummary, AdvancesFilterOptions
 from app.models.expense import RequestStatus
+from app.models.user import UserClaims, UserRole
 
 
 class AdvanceService:
     def __init__(self, advance_repo: AdvanceRepository):
         self.advance_repo = advance_repo
 
-    async def get_advance_by_id(self, advance_id: str) -> Advance:
+    async def get_advance_by_id(self, curr_user: UserClaims, advance_id: str) -> Advance:
         advance = await self.advance_repo.get(advance_id)
         if not advance:
             raise AppException(
-                AppErr.ADVANCE_NOT_FOUND, f"Advance with ID {advance_id} not found"
+                AppErr.ADVANCE_NOT_FOUND, f"Advance with ID {
+                    advance_id} not found"
             )
+        if advance.user_id != curr_user.user_id and curr_user.role != UserRole.Admin:
+            raise AppException(AppErr.FORBIDDEN)
         return advance
 
     async def create_advance(self, advance: Advance) -> str:
@@ -26,17 +30,28 @@ class AdvanceService:
         await self.advance_repo.save(advance)
         return advance.id
 
-    async def update_advance(self, advance: Advance) -> None:
+    async def update_advance(self, curr_user: UserClaims, advance: Advance) -> None:
         existing_advance = await self.advance_repo.get(advance.id)
         if not existing_advance:
             raise AppException(
-                AppErr.ADVANCE_NOT_FOUND, f"Advance with ID {advance.id} not found"
+                AppErr.ADVANCE_NOT_FOUND, f"Advance with ID {
+                    advance.id} not found"
+            )
+
+        if (
+            existing_advance.user_id != curr_user.user_id
+            and curr_user.role != UserRole.Admin
+        ):
+            raise AppException(
+                AppErr.FORBIDDEN
             )
         await self.advance_repo.update(advance)
 
     async def get_all_advances(
-        self, filter_options: AdvancesFilterOptions
+        self, curr_user: UserClaims, filter_options: AdvancesFilterOptions
     ) -> tuple[list[Advance], int]:
+        if not filter_options.user_id or filter_options.user_id == "":
+            filter_options.user_id = curr_user.user_id
         advances, total_count = await self.advance_repo.get_all(filter_options)
         return advances, total_count
 
