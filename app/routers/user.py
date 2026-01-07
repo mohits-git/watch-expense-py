@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, Path, status
-from app.dependencies.auth import AuthenticatedUser, admin_only, authenticated_user
+from app.dependencies.auth import AuthenticatedUser, required_roles
 from app.dependencies.services import UserServiceInstance
 from app.dtos.response import BaseResponse
 from app.dtos.user import (
@@ -14,11 +14,14 @@ from app.dtos.user import (
     UpdateUserRequest,
     UserDTO,
 )
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
-user_router = APIRouter(prefix="/users", dependencies=[Depends(authenticated_user)])
-_user_admin_only = APIRouter(dependencies=[Depends(admin_only)])
+user_router = APIRouter(
+    prefix="/users",
+    dependencies=[Depends(required_roles([UserRole.Employee, UserRole.Admin]))],
+)
+_user_admin_only = APIRouter(dependencies=[Depends(required_roles([UserRole.Admin]))])
 
 
 @_user_admin_only.get("/", response_model=GetAllUsersResponse)

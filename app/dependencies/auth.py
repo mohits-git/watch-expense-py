@@ -7,14 +7,15 @@ from app.models.user import UserClaims, UserRole
 
 
 def auth_token(
-        authorization: Annotated[str | None, Header(alias="Authorization")],
-        token_provider: TokenProviderInstance) -> str:
-    if not authorization or not authorization.startswith('Bearer '):
+    authorization: Annotated[str | None, Header(alias="Authorization")],
+    token_provider: TokenProviderInstance,
+) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized")
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+        )
     try:
-        token = authorization.split(' ', 2)[1]
+        token = authorization.split(" ", 2)[1]
         claims = token_provider.validate_token(token)
         if not claims:
             raise Exception("Unauthorized")
@@ -23,31 +24,26 @@ def auth_token(
         raise e
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized")
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"
+        )
 
 
 AuthTokenHeader = Annotated[str, Depends(auth_token)]
 
 
 def authenticated_user(
-        token: AuthTokenHeader,
-        token_provider: TokenProviderInstance) -> UserClaims:
+    token: AuthTokenHeader, token_provider: TokenProviderInstance
+) -> UserClaims:
     return token_provider.validate_token(token)
 
 
 AuthenticatedUser = Annotated[UserClaims, Depends(authenticated_user)]
 
 
-def admin_only(curr_user: AuthenticatedUser):
-    if curr_user.role != UserRole.Admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden")
-
-
-def employee_only(curr_user: AuthenticatedUser):
-    if curr_user.role != UserRole.Employee:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden")
+def required_roles(roles: list[UserRole]):
+    def required_roles_dependency(curr_user: AuthenticatedUser):
+        if curr_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden"
+            )
+    return required_roles_dependency
