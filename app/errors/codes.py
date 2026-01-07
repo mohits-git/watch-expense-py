@@ -25,6 +25,15 @@ class AppErr(enum.IntEnum):
     # Project resource errors
     PROJECT_NOT_FOUND = 4001
 
+    # Department resource error
+    DEPARTMENT_NOT_FOUND = 4001
+
+    # Expense resource error
+    EXPENSE_NOT_FOUND = 5001
+
+    # Advance resource error
+    ADVANCE_NOT_FOUND = 5001
+
 
 @dataclass
 class HTTPAppError:
