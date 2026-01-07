@@ -17,22 +17,14 @@ class AppErr(enum.IntEnum):
     ADMIN_ONLY = 2002
 
     # User resource errors
-    USER_NOT_FOUND = 3001
-    CREATE_USER_PASSWORD_REQUIRED = 3002
-    USER_ALREADY_EXISTS = 3003
-    CANNOT_DELETE_SELF = 3004
+    CREATE_USER_PASSWORD_REQUIRED = 3001
+    USER_ALREADY_EXISTS = 3002
+    CANNOT_DELETE_SELF = 3003
 
     # Project resource errors
-    PROJECT_NOT_FOUND = 4001
-
     # Department resource error
-    DEPARTMENT_NOT_FOUND = 4001
-
     # Expense resource error
-    EXPENSE_NOT_FOUND = 5001
-
     # Advance resource error
-    ADVANCE_NOT_FOUND = 5001
 
 
 @dataclass

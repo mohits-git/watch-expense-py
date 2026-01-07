@@ -17,10 +17,7 @@ class AdvanceService:
     async def get_advance_by_id(self, curr_user: UserClaims, advance_id: str) -> Advance:
         advance = await self.advance_repo.get(advance_id)
         if not advance:
-            raise AppException(
-                AppErr.ADVANCE_NOT_FOUND, f"Advance with ID {
-                    advance_id} not found"
-            )
+            raise AppException(AppErr.NOT_FOUND, "Advance not found")
         if advance.user_id != curr_user.user_id and curr_user.role != UserRole.Admin:
             raise AppException(AppErr.FORBIDDEN)
         return advance
@@ -33,10 +30,7 @@ class AdvanceService:
     async def update_advance(self, curr_user: UserClaims, advance: Advance) -> None:
         existing_advance = await self.advance_repo.get(advance.id)
         if not existing_advance:
-            raise AppException(
-                AppErr.ADVANCE_NOT_FOUND, f"Advance with ID {
-                    advance.id} not found"
-            )
+            raise AppException(AppErr.NOT_FOUND, "Advance not found")
 
         if (
             existing_advance.user_id != curr_user.user_id
@@ -60,7 +54,7 @@ class AdvanceService:
     ) -> None:
         existing_advance = await self.advance_repo.get(advance_id)
         if not existing_advance:
-            raise AppException(AppErr.ADVANCE_NOT_FOUND)
+            raise AppException(AppErr.NOT_FOUND)
         existing_advance.status = status
         if status == RequestStatus.Approved:
             existing_advance.approved_by = curr_user_id

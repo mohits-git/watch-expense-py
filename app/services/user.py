@@ -34,7 +34,7 @@ class UserService:
     async def get_user_by_id(self, user_id: str) -> User:
         user = await self.user_repo.get(user_id)
         if not user:
-            raise AppException(AppErr.USER_NOT_FOUND)
+            raise AppException(AppErr.NOT_FOUND, "User not found")
         return user
 
     async def get_all_users(self) -> list[User]:
@@ -48,7 +48,7 @@ class UserService:
     async def get_user_budget(self, user_id: str) -> float:
         user = await self.user_repo.get(user_id)
         if user is None:
-            raise AppException(AppErr.USER_NOT_FOUND)
+            raise AppException(AppErr.NOT_FOUND, "User not found")
 
         if user.project_id == "":
             return 0.0

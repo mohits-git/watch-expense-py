@@ -23,7 +23,7 @@ class ProjectService:
     ) -> Project:
         project = await self.project_repo.get(project_id)
         if not project:
-            raise AppException(AppErr.PROJECT_NOT_FOUND)
+            raise AppException(AppErr.NOT_FOUND, "Project not found")
         return project
 
     async def get_all_projects(self) -> list[Project]:

@@ -22,10 +22,7 @@ class ExpenseService:
             self, curr_user: UserClaims, expense_id: str) -> Expense:
         expense = await self.expense_repo.get(expense_id)
         if not expense:
-            raise AppException(
-                AppErr.EXPENSE_NOT_FOUND, f"expense with ID {
-                    expense_id} not found"
-            )
+            raise AppException(AppErr.NOT_FOUND, "expense not found")
         if (
             expense.user_id != curr_user.user_id
             and curr_user.role != UserRole.Admin
@@ -41,10 +38,7 @@ class ExpenseService:
     async def update_expense(self, curr_user: UserClaims, expense: Expense) -> None:
         existing_expense = await self.expense_repo.get(expense.id)
         if not existing_expense:
-            raise AppException(
-                AppErr.EXPENSE_NOT_FOUND, f"Expense with ID {
-                    expense.id} not found"
-            )
+            raise AppException(AppErr.NOT_FOUND, "Expense not found")
         if (
             existing_expense.user_id != curr_user.user_id
             and curr_user.user_id != UserRole.Admin
@@ -64,7 +58,7 @@ class ExpenseService:
     ) -> None:
         existing_expense = await self.expense_repo.get(expense_id)
         if not existing_expense:
-            raise AppException(AppErr.EXPENSE_NOT_FOUND)
+            raise AppException(AppErr.NOT_FOUND, "Expense not found")
         existing_expense.status = status
         if status == RequestStatus.Approved:
             existing_expense.approved_by = curr_user_id

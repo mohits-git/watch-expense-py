@@ -23,7 +23,7 @@ class DepartmentService:
     ) -> Department:
         department = await self.department_repo.get(department_id)
         if not department:
-            raise AppException(AppErr.DEPARTMENT_NOT_FOUND)
+            raise AppException(AppErr.NOT_FOUND, "Department not found")
         return department
 
     async def get_all_departments(self) -> list[Department]:

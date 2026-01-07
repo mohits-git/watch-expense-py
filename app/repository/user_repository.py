@@ -102,8 +102,8 @@ class UserRepository:
         email = await self._get_email_by_id(user_id)
         if not email:
             raise AppException(
-                AppErr.NOT_FOUND, f"User with user_id: {user_id} not found"
-            )
+                AppErr.NOT_FOUND,
+                f"User with user_id: {user_id} not found")
         primary_key = self._get_user_primary_key(user_id)
         lookup_pk = self._get_lookup_primary_key(email)
         async with self._table.batch_writer() as batch:
@@ -121,7 +121,8 @@ class UserRepository:
         if not user.password or user.password == "":
             exclude_fields.add("password")
         to_update = user.model_dump(by_alias=True, exclude=exclude_fields)
-        update_expr, expr_names, expr_values = utils.build_update_expression(to_update)
+        update_expr, expr_names, expr_values = utils.build_update_expression(
+            to_update)
 
         primary_key = self._get_user_primary_key(user.id)
         if user.email == existing_email:
