@@ -41,6 +41,35 @@ async def handle_get_all_advances(
     )
 
 
+@advance_router.post("/", response_model=CreateAdvanceResponse)
+async def handle_create_advance(
+    create_advance_request: CreateAdvanceRequest,
+    advance_service: AdvanceServiceInstance,
+):
+    advance = Advance(**create_advance_request.model_dump(by_alias=False))
+    advance_id = await advance_service.create_advance(advance)
+    return CreateAdvanceResponse(
+        status=status.HTTP_201_CREATED,
+        message="Advance created successfully",
+        data=CreateAdvanceResponse.Data(id=advance_id),
+    )
+
+
+@advance_router.get("/summary", response_model=GetAdvanceSummaryResponse)
+async def handle_get_advance_summary(
+    curr_user: AuthenticatedUser,
+    advance_service: AdvanceServiceInstance,
+):
+    advance_summary = await advance_service.get_advance_summary(curr_user.user_id)
+    return GetAdvanceSummaryResponse(
+        status=status.HTTP_200_OK,
+        message="Advance summary fetched successfully",
+        data=GetAdvanceSummaryResponse.Data(
+            **advance_summary.model_dump()
+        ),
+    )
+
+
 @advance_router.get("/{advance_id}", response_model=GetAdvanceResponse)
 async def handle_get_advance_by_id(
     advance_id: str,
@@ -53,20 +82,6 @@ async def handle_get_advance_by_id(
         status=status.HTTP_200_OK,
         message="Advance fetched successfully",
         data=advance_dto,
-    )
-
-
-@advance_router.post("/", response_model=CreateAdvanceResponse)
-async def handle_create_advance(
-    create_advance_request: CreateAdvanceRequest,
-    advance_service: AdvanceServiceInstance,
-):
-    advance = Advance(**create_advance_request.model_dump(by_alias=False))
-    advance_id = await advance_service.create_advance(advance)
-    return CreateAdvanceResponse(
-        status=status.HTTP_201_CREATED,
-        message="Advance created successfully",
-        data=CreateAdvanceResponse.Data(id=advance_id),
     )
 
 
@@ -83,19 +98,4 @@ async def handle_update_advance(
     return BaseModel(
         status=status.HTTP_200_OK,
         message="Advance updated successfully",
-    )
-
-
-@advance_router.get("/summary", response_model=GetAdvanceSummaryResponse)
-async def handle_get_advance_summary(
-    curr_user: AuthenticatedUser,
-    advance_service: AdvanceServiceInstance,
-):
-    advance_summary = await advance_service.get_advance_summary(curr_user.user_id)
-    return GetAdvanceSummaryResponse(
-        status=status.HTTP_200_OK,
-        message="Advance summary fetched successfully",
-        data=GetAdvanceSummaryResponse.Data(
-            **advance_summary.model_dump()
-        ),
     )

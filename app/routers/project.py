@@ -31,18 +31,6 @@ async def handle_get_all_projects(project_service: ProjectServiceInstance):
     )
 
 
-@project_router.get("/{project_id}", response_model=GetProjectResponse)
-async def handle_get_project_by_id(
-    project_id: Annotated[str, Path()], project_service: ProjectServiceInstance
-):
-    project = await project_service.get_project_by_id(project_id)
-    return GetProjectResponse(
-        status=200,
-        message="Project retrieved successfully",
-        data=ProjectDTO(**project.model_dump()),
-    )
-
-
 @project_router.post("/", response_model=CreateProjectResponse)
 async def handle_create_project(
     create_project_request: CreateProjectRequest,
@@ -54,6 +42,18 @@ async def handle_create_project(
         status=201,
         message="Project created successfully",
         data=CreateProjectResponse.Data(id=project_id),
+    )
+
+
+@project_router.get("/{project_id}", response_model=GetProjectResponse)
+async def handle_get_project_by_id(
+    project_id: Annotated[str, Path()], project_service: ProjectServiceInstance
+):
+    project = await project_service.get_project_by_id(project_id)
+    return GetProjectResponse(
+        status=200,
+        message="Project retrieved successfully",
+        data=ProjectDTO(**project.model_dump()),
     )
 
 

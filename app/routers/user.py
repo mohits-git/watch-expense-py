@@ -23,6 +23,19 @@ user_router = APIRouter(
 _user_admin_only = APIRouter(dependencies=[Depends(required_roles([UserRole.Admin]))])
 
 
+@user_router.get("/budget", response_model=GetUserBudgetResponse)
+async def handle_get_user_budget(
+    curr_user: AuthenticatedUser,
+    user_service: UserServiceInstance,
+):
+    budget = await user_service.get_user_budget(curr_user.user_id)
+    return GetUserBudgetResponse(
+        status=status.HTTP_200_OK,
+        message="Fetched user budget successfully",
+        data=GetUserBudgetResponse.Data(budget=budget),
+    )
+
+
 @_user_admin_only.get("/", response_model=GetAllUsersResponse)
 async def handle_get_all_users(user_service: UserServiceInstance):
     users = await user_service.get_all_users()
@@ -30,19 +43,6 @@ async def handle_get_all_users(user_service: UserServiceInstance):
         status=status.HTTP_200_OK,
         message="Fetched all users successfully",
         data=[UserDTO(**user.model_dump()) for user in users],
-    )
-
-
-@_user_admin_only.get("/{user_id}", response_model=GetUserResponse)
-async def handle_get_user_by_id(
-    user_id: Annotated[str, Path()],
-    user_service: UserServiceInstance,
-):
-    user = await user_service.get_user_by_id(user_id)
-    return GetUserResponse(
-        status=status.HTTP_200_OK,
-        message="Fetched user successfully",
-        data=UserDTO(**user.model_dump()),
     )
 
 
@@ -59,6 +59,19 @@ async def handle_create_user(
         status=status.HTTP_201_CREATED,
         message="User created successfully",
         data=CreateUserResponse.Data(id=user_id),
+    )
+
+
+@_user_admin_only.get("/{user_id}", response_model=GetUserResponse)
+async def handle_get_user_by_id(
+    user_id: Annotated[str, Path()],
+    user_service: UserServiceInstance,
+):
+    user = await user_service.get_user_by_id(user_id)
+    return GetUserResponse(
+        status=status.HTTP_200_OK,
+        message="Fetched user successfully",
+        data=UserDTO(**user.model_dump()),
     )
 
 
@@ -87,19 +100,6 @@ async def handle_delete_user(
     user_service: UserServiceInstance,
 ):
     await user_service.delete_user(curr_user.user_id, user_id)
-
-
-@user_router.get("/budget", response_model=GetUserBudgetResponse)
-async def handle_get_user_budget(
-    curr_user: AuthenticatedUser,
-    user_service: UserServiceInstance,
-):
-    budget = await user_service.get_user_budget(curr_user.user_id)
-    return GetUserBudgetResponse(
-        status=status.HTTP_200_OK,
-        message="Fetched user budget successfully",
-        data=GetUserBudgetResponse.Data(budget=budget),
-    )
 
 
 user_router.include_router(_user_admin_only)

@@ -31,18 +31,6 @@ async def handle_get_all_departments(department_service: DepartmentServiceInstan
     )
 
 
-@department_router.get("/{}", response_model=GetDepartmentResponse)
-async def handle_get_department_by_id(
-    department_id: Annotated[str, Path()], department_service: DepartmentServiceInstance
-):
-    department = await department_service.get_department_by_id(department_id)
-    return GetDepartmentResponse(
-        status=200,
-        message="Department retrieved successfully",
-        data=DepartmentDTO(**department.model_dump()),
-    )
-
-
 @department_router.post("/", response_model=CreateDepartmentResponse)
 async def handle_create_department(
     create_department_request: CreateDepartmentRequest,
@@ -54,6 +42,18 @@ async def handle_create_department(
         status=201,
         message="Department created successfully",
         data=CreateDepartmentResponse.Data(id=department_id),
+    )
+
+
+@department_router.get("/{department_id}", response_model=GetDepartmentResponse)
+async def handle_get_department_by_id(
+    department_id: Annotated[str, Path()], department_service: DepartmentServiceInstance
+):
+    department = await department_service.get_department_by_id(department_id)
+    return GetDepartmentResponse(
+        status=200,
+        message="Department retrieved successfully",
+        data=DepartmentDTO(**department.model_dump()),
     )
 
 
