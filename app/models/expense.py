@@ -30,8 +30,9 @@ class Expense(BaseModel):
     amount: Decimal = Field(alias="Amount")
     description: str = Field(alias="Description")
     purpose: str = Field(alias="Purpose")
-    status: RequestStatus = Field(alias="Status")
+    status: RequestStatus = Field(alias="Status", default=RequestStatus.Pending)
     is_reconciled: bool = Field(alias="IsReconciled")
+    advance_id: str | None = Field(alias="AdvanceID", default=None, exclude=True)
     approved_by: str | None = Field(alias="ApprovedBy", default=None)
     approved_at: int | None = Field(alias="ApprovedAt", default=None)
     reviewed_by: str | None = Field(alias="ReviewedBy", default=None)
@@ -64,7 +65,7 @@ class ExpensesFilterOptions(BaseModel):
 
 
 class ExpenseSummary(BaseModel):
-    total_expenses: Decimal
+    total_expense: Decimal
     pending_expense: Decimal
     reimbursed_expense: Decimal
     rejected_expense: Decimal

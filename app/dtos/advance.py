@@ -7,7 +7,7 @@ from app.models.expense import RequestStatus
 
 
 class AdvanceDTO(BaseModel):
-    id: str = Field(alias="advanceId")
+    id: str = Field(alias="id")
     user_id: str = Field(alias="userId")
     amount: DecimalAsFloat = Field(alias="amount")
     description: str = Field(alias="description")

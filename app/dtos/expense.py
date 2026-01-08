@@ -20,7 +20,7 @@ class BillDTO(BaseModel):
 
 
 class ExpenseDTO(BaseModel):
-    id: str = Field(alias="expenseId")
+    id: str = Field(alias="id")
     user_id: str = Field(alias="userId")
     amount: DecimalAsFloat = Field(alias="amount")
     description: str = Field(alias="description")
@@ -103,7 +103,7 @@ class GetAllExpensesResponse(BaseResponse):
 
 class GetExpenseSummaryResponse(BaseResponse):
     class Data(BaseModel):
-        total_expenses: DecimalAsFloat = Field(alias="totalExpenses")
+        total_expense: DecimalAsFloat = Field(alias="totalExpense")
         pending_expense: DecimalAsFloat = Field(alias="pendingExpense")
         reimbursed_expense: DecimalAsFloat = Field(alias="reimbursedExpense")
         rejected_expense: DecimalAsFloat = Field(alias="rejectedExpense")

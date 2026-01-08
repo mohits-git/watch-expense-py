@@ -10,7 +10,7 @@ class Advance(BaseModel):
     amount: Decimal = Field(alias="Amount")
     description: str = Field(alias="Description")
     purpose: str = Field(alias="Purpose")
-    status: RequestStatus = Field(alias="Status")
+    status: RequestStatus = Field(alias="Status", default=RequestStatus.Pending)
     reconciled_expense_id: str | None = Field(
         alias="ReconciledExpenseID", default=None)
     approved_by: str | None = Field(alias="ApprovedBy", default=None)

@@ -6,7 +6,7 @@ from app.dtos.type import DecimalAsFloat
 
 
 class DepartmentDTO(BaseModel):
-    id: str = Field(alias="projectId")
+    id: str = Field(alias="id")
     name: str = Field(alias="name")
     budget: DecimalAsFloat = Field(alias="budget")
     created_at: Annotated[int, BeforeValidator(
