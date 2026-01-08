@@ -20,4 +20,5 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.INVALID_EXPENSE_RECONCILE_ADVANCE: (422, "Invalid advance for reconciliation expense"),
     AppErr.EXPENSE_RECONCILE_PERMISSION_DENIED: (403, "Cannot reconcile expense with this advance"),
     AppErr.ADVANCE_ALREADY_EXISTS: (409, "Advance already exists"),
+    AppErr.IMAGE_URL_ALREADY_EXIST: (409, "Image URL already exists"),
 }

@@ -128,6 +128,14 @@
     "SK": "DEPARTMENT#<projectID>",
     "DepartmentID": "uuid"
   }
+  /* -----------------------------------------------------------
+     IMAGE - USER METADATA
+  ------------------------------------------------------------*/
+  {
+    "PK": "IMAGE",
+    "SK": "IMAGE#<ImageURL>",
+    "UserID": "uuid",
+  }
 ]
 ```
 
@@ -173,4 +181,3 @@
 
 14. Get all departments
     Query: PK = "DEPARTMENT"
-

@@ -31,3 +31,5 @@ class AppErr(enum.IntEnum):
     EXPENSE_RECONCILE_PERMISSION_DENIED = 6003
     # Advance resource error
     ADVANCE_ALREADY_EXISTS = 7001
+    # Image resource error
+    IMAGE_URL_ALREADY_EXIST = 8001

@@ -47,11 +47,7 @@ class DepartmentRepository:
                 ConditionExpression="attribute_not_exists(PK) AND attribute_not_exists(SK)",
             )
         except self._table.meta.client.exceptions.ConditionalCheckFailedException as err:
-            raise AppException(
-                AppErr.DEPARTMENT_ALREADY_EXISTS,
-                "Department already exists",
-                cause=err,
-            )
+            raise AppException(AppErr.DEPARTMENT_ALREADY_EXISTS, cause=err)
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to save department")
 
