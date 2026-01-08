@@ -1399,6 +1399,9 @@ wheels = [
 dynamodb = [
     { name = "types-aiobotocore-dynamodb" },
 ]
+s3 = [
+    { name = "types-aiobotocore-s3" },
+]
 
 [[package]]
 name = "types-aiobotocore"
@@ -1419,6 +1422,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/66/27/207586698335d59af8af295f934f85339e993a55d9f846e5fc15d923754b/types_aiobotocore_dynamodb-2.21.1.tar.gz", hash = "sha256:bf8befc54b7655ea55e1d1d4703e7a94be3ac9917b58918e4d789a570eb9e217", size = 47596, upload-time = "2025-03-05T01:30:00.565Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/27/43/937cdab850d90d180bf8126048710ed748efb8afd837b241ad2bd65674c2/types_aiobotocore_dynamodb-2.21.1-py3-none-any.whl", hash = "sha256:98431097214367abc22e274c069693ed3b8b64f21fe50322e2cfd8c79624f67c", size = 57334, upload-time = "2025-03-05T01:29:58.858Z" },
+]
+
+[[package]]
+name = "types-aiobotocore-s3"
+version = "2.21.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/71/de81daa98ff5dbba2f426268c36514af3740f3997107bb7f3235072f4a9e/types_aiobotocore_s3-2.21.1.tar.gz", hash = "sha256:5c8a68b78d577006062de4c158bd902eab2c38e81570be5bac0227375f9d8153", size = 74063, upload-time = "2025-03-05T01:39:06.428Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/04/af/67b6e27f273ad69d3498afd5488a060e718e0c21e24c2f0aeffb8702e640/types_aiobotocore_s3-2.21.1-py3-none-any.whl", hash = "sha256:64b04b7729a3322e4758401e722c21277aa0e798c00d0077c4f43a9f584858fd", size = 81395, upload-time = "2025-03-05T01:39:05.159Z" },
 ]
 
 [[package]]
@@ -1536,7 +1548,8 @@ dependencies = [
     { name = "pyjwt" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
-    { name = "types-aioboto3", extra = ["dynamodb"] },
+    { name = "python-multipart" },
+    { name = "types-aioboto3", extra = ["dynamodb", "s3"] },
 ]
 
 [package.metadata]
@@ -1547,7 +1560,8 @@ requires-dist = [
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
-    { name = "types-aioboto3", extras = ["dynamodb"], specifier = "==14.1.0" },
+    { name = "python-multipart", specifier = ">=0.0.21" },
+    { name = "types-aioboto3", extras = ["dynamodb", "s3"], specifier = "==14.1.0" },
 ]
 
 [[package]]
