@@ -40,10 +40,10 @@ app.add_middleware(
 
 @app.exception_handler(AppException)
 async def app_exception_handler(request, exc: AppException):
-    # TODO: remove after dev
-    print(exc.err_code, exc.message, exc.cause)
     http_status, default_msg = ERROR_MAP.get(
         exc.err_code, (500, "Unknown error"))
+    # TODO: remove after dev
+    print(exc.err_code, exc.message, exc.cause, http_status, default_msg)
     return JSONResponse(
         status_code=http_status,
         content=ErrorResponse(
