@@ -2,6 +2,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.services.auth import AuthService
+from app.services.image import ImageService
 from app.services.user import UserService
 from app.services.project import ProjectService
 from app.services.department import DepartmentService
@@ -33,9 +34,14 @@ def get_advance_service(request: Request) -> AdvanceService:
     return request.app.state.advance_service
 
 
+def get_image_service(request: Request) -> ImageService:
+    return request.app.state.image_service
+
+
 AuthServiceInstance = Annotated[AuthService, Depends(get_auth_service)]
 UserServiceInstance = Annotated[UserService, Depends(get_user_service)]
 ProjectServiceInstance = Annotated[ProjectService, Depends(get_project_service)]
 DepartmentServiceInstance = Annotated[DepartmentService, Depends(get_department_service)]
 ExpenseServiceInstance = Annotated[ExpenseService, Depends(get_expense_service)]
 AdvanceServiceInstance = Annotated[AdvanceService, Depends(get_advance_service)]
+ImageServiceInstance = Annotated[ImageService, Depends(get_image_service)]

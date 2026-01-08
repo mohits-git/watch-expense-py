@@ -1,5 +1,5 @@
 import pytest
-from app.utils.bcrypt_password_hasher import BcryptPasswordHasher
+from app.infra.bcrypt_password_hasher import BcryptPasswordHasher
 
 
 @pytest.fixture

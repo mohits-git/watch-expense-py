@@ -19,7 +19,7 @@ class ImageMetadataRepository:
             "SK": f"{self._sk_prefix}{image_url}"
         }
 
-    async def save_image_user_metadata(self, image_url: str, metadata: ImageMetadata) -> None:
+    async def save(self, image_url: str, metadata: ImageMetadata) -> None:
         try:
             primary_key = self._get_primary_key(image_url)
             await self._table.put_item(
@@ -34,7 +34,7 @@ class ImageMetadataRepository:
         except ClientError as err:
             raise utils.handle_dynamo_error(err)
 
-    async def get_image_user_metadata(self, image_url: str) -> ImageMetadata | None:
+    async def get(self, image_url: str) -> ImageMetadata | None:
         try:
             primary_key = self._get_primary_key(image_url)
             response = await self._table.get_item(Key={**primary_key})
@@ -45,7 +45,7 @@ class ImageMetadataRepository:
         except ClientError as err:
             raise utils.handle_dynamo_error(err)
 
-    async def delete_image_user_metadata(self, image_url: str) -> None:
+    async def delete(self, image_url: str) -> None:
         try:
             primary_key = self._get_primary_key(image_url)
             await self._table.delete_item(Key={**primary_key})
