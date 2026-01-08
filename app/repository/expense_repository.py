@@ -53,13 +53,14 @@ class ExpenseRepository:
                 cause=err,
             )
 
-    async def save(self, expense: Expense) -> None:
+    async def save(self, expense: Expense, reconciled_advance: str | None = None) -> None:
         if not expense.id:
             expense.id = str(uuid.uuid4())
         if not expense.created_at:
             expense.created_at = int(time.time_ns() // 1e6)
             expense.updated_at = expense.created_at
-        primary_key = self._get_expense_primary_key(expense.user_id, expense.id)
+        primary_key = self._get_expense_primary_key(
+            expense.user_id, expense.id)
         lookup_pk = self._get_lookup_primary_key(expense.id)
         transact_items: list[TransactWriteItemTypeDef] = [
             {
@@ -83,6 +84,24 @@ class ExpenseRepository:
                 }
             },
         ]
+        if reconciled_advance:
+            advance_primary_key = {
+                "PK": "ADVANCE",
+                "SK": f"DETAILS#{expense.user_id}#{reconciled_advance}"
+            }
+            transact_items.append({
+                "Update": {
+                    "TableName": self._table_name,
+                    "Key": advance_primary_key,
+                    "UpdateExpression": "SET #ReconciledExpenseID = :expenseId",
+                    "ExpressionAttributeNames": {
+                        "#ReconciledExpenseID": "ReconciledExpenseID",
+                    },
+                    "ExpressionAttributeValues": {
+                        ":expenseId": expense.id,
+                    },
+                }
+            })
         try:
             await self._table.meta.client.transact_write_items(
                 TransactItems=transact_items)
@@ -90,11 +109,7 @@ class ExpenseRepository:
             reasons = err.response.get("CancellationReasons", [])
             codes = {r.get("Code") for r in reasons}
             if "ConditionalCheckFailed" in codes:
-                raise AppException(
-                    AppErr.EXPENSE_ALREADY_EXISTS,
-                    "Expense already exists",
-                    cause=err,
-                )
+                raise AppException(AppErr.EXPENSE_ALREADY_EXISTS, cause=err)
             raise utils.handle_dynamo_error(err, "Failed to save expense")
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to save expense")
@@ -123,7 +138,8 @@ class ExpenseRepository:
             }
 
             if filterOptions.status is not None:
-                query_input["FilterExpression"] = Attr("Status").eq(filterOptions.status)
+                query_input["FilterExpression"] = Attr(
+                    "Status").eq(filterOptions.status)
 
             # Total count
             query_input["Select"] = "COUNT"
@@ -145,7 +161,8 @@ class ExpenseRepository:
             response = await self._table.query(**query_input)
             if not response or "Items" not in response:
                 return ([], 0)
-            expenses = [self._parse_expense_item(item) for item in response["Items"]]
+            expenses = [self._parse_expense_item(
+                item) for item in response["Items"]]
             return (expenses, total_records)
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to fetch expenses")
@@ -161,9 +178,11 @@ class ExpenseRepository:
         expense.updated_at = int(time.time_ns() // 1e6)
         exclude_fields = {"id", "created_at", "user_id"}
         to_update = expense.model_dump(by_alias=True, exclude=exclude_fields)
-        update_expr, expr_names, expr_values = utils.build_update_expression(to_update)
+        update_expr, expr_names, expr_values = utils.build_update_expression(
+            to_update)
 
-        primary_key = self._get_expense_primary_key(expense.user_id, expense.id)
+        primary_key = self._get_expense_primary_key(
+            expense.user_id, expense.id)
         try:
             await self._table.update_item(
                 Key=primary_key,
@@ -199,4 +218,5 @@ class ExpenseRepository:
                     expenses_sum += float(amount)
             return expenses_sum
         except ClientError as err:
-            raise utils.handle_dynamo_error(err, "Failed to calculate expenses sum")
+            raise utils.handle_dynamo_error(
+                err, "Failed to calculate expenses sum")

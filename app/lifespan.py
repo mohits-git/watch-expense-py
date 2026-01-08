@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
                 password_hasher, user_repo, project_repo)
             project_service = ProjectService(project_repo)
             department_service = DepartmentService(department_repo)
-            expense_service = ExpenseService(expense_repo)
+            expense_service = ExpenseService(expense_repo, advance_repo)
             advance_service = AdvanceService(advance_repo)
 
             # add to state

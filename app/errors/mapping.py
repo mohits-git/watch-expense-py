@@ -17,5 +17,7 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.PROJECT_ALREADY_EXISTS: (409, "Project already exists"),
     AppErr.DEPARTMENT_ALREADY_EXISTS: (409, "Department already exists"),
     AppErr.EXPENSE_ALREADY_EXISTS: (409, "Expense already exists"),
+    AppErr.INVALID_EXPENSE_RECONCILE_ADVANCE: (422, "Invalid advance for reconciliation expense"),
+    AppErr.EXPENSE_RECONCILE_PERMISSION_DENIED: (403, "Cannot reconcile expense with this advance"),
     AppErr.ADVANCE_ALREADY_EXISTS: (409, "Advance already exists"),
 }

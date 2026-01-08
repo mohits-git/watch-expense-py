@@ -81,4 +81,10 @@ def handle_dynamo_error(err: ClientError, msg: str = "Operation failed") -> AppE
     code = err.response.get("Error", {}).get("Code", "")
     if code == "ProvisionedThroughputExceededException":
         return AppException(AppErr.THROTTLE)
+    # DEV:
+    # if code == 'TransactionCanceledException':
+    #     print("Transaction Cancellation reasons:")
+    #     for reason in err.response.get('CancellationReasons', []):
+    #         print(f"- Code: {reason.get('Code')
+    #                          }, Message: {reason.get('Message')}")
     return AppException(AppErr.INTERNAL, msg, cause=err)

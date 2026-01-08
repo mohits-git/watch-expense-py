@@ -5,8 +5,8 @@ from app.models.expense import RequestStatus
 
 
 class Advance(BaseModel):
-    id: str = Field(alias="AdvanceID")
-    user_id: str = Field(alias="UserID")
+    id: str = Field(alias="AdvanceID", default="")
+    user_id: str = Field(alias="UserID", default="")
     amount: Decimal = Field(alias="Amount")
     description: str = Field(alias="Description")
     purpose: str = Field(alias="Purpose")

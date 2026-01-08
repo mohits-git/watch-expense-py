@@ -12,7 +12,7 @@ class RequestStatus(str, Enum):
 
 
 class Bill(BaseModel):
-    id: str = Field(alias="BillID")
+    id: str = Field(alias="BillID", default="")
     amount: Decimal = Field(alias="Amount")
     description: str = Field(alias="Description")
     attachment_url: str = Field(alias="AttachmentURL")
@@ -25,8 +25,8 @@ class Bill(BaseModel):
 
 
 class Expense(BaseModel):
-    id: str = Field(alias="ExpenseID")
-    user_id: str = Field(alias="UserID")
+    id: str = Field(alias="ExpenseID", default="")
+    user_id: str = Field(alias="UserID", default="")
     amount: Decimal = Field(alias="Amount")
     description: str = Field(alias="Description")
     purpose: str = Field(alias="Purpose")

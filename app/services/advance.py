@@ -22,8 +22,9 @@ class AdvanceService:
             raise AppException(AppErr.FORBIDDEN)
         return advance
 
-    async def create_advance(self, advance: Advance) -> str:
+    async def create_advance(self, curr_user: UserClaims, advance: Advance) -> str:
         advance.id = uuid4().hex
+        advance.user_id = curr_user.user_id
         await self.advance_repo.save(advance)
         return advance.id
 

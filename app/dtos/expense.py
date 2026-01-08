@@ -7,10 +7,9 @@ from app.models.expense import RequestStatus
 
 
 class BillDTO(BaseModel):
-    id: str = Field(alias="billId")
     amount: DecimalAsFloat = Field(alias="amount")
     description: str = Field(alias="description")
-    attachment_url: str = Field(alias="attachmentUrl")
+    attachment_url: str = Field(alias="attachmentUrl", default="")
 
     # pydantic config
     model_config = ConfigDict(validate_by_name=True,

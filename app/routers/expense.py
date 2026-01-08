@@ -1,8 +1,8 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel
 
 from app.dependencies.services import ExpenseServiceInstance
+from app.dtos.response import BaseResponse
 from app.models.expense import Expense, ExpensesFilterOptions
 from app.dtos.expense import (
     CreateExpenseResponse,
@@ -12,13 +12,15 @@ from app.dtos.expense import (
     CreateExpenseRequest,
     UpdateExpenseRequest,
     GetExpenseSummaryResponse,
+    UpdateExpenseStatusRequest,
 )
-from app.dependencies.auth import AuthenticatedUser, required_roles
+from app.dependencies.auth import AuthenticatedUser, authenticated_user, required_roles
 from app.models.user import UserRole
 
 
 expense_router = APIRouter(
-    prefix="/expenses", dependencies=[Depends(required_roles([UserRole.Admin]))],
+    prefix="/expenses",
+    dependencies=[Depends(authenticated_user)],
     tags=["Expenses"]
 )
 
@@ -41,13 +43,18 @@ async def handle_get_all_expenses(
     )
 
 
-@expense_router.post("/", response_model=CreateExpenseResponse)
+@expense_router.post(
+    "/",
+    response_model=CreateExpenseResponse,
+    dependencies=[Depends(required_roles([UserRole.Employee]))],
+)
 async def handle_create_expense(
+    curr_user: AuthenticatedUser,
     create_expense_request: CreateExpenseRequest,
     expense_service: ExpenseServiceInstance,
 ):
     expense = Expense(**create_expense_request.model_dump(by_alias=False))
-    expense_id = await expense_service.create_expense(expense)
+    expense_id = await expense_service.create_expense(curr_user, expense)
     return CreateExpenseResponse(
         status=status.HTTP_201_CREATED,
         message="Expense created successfully",
@@ -55,7 +62,10 @@ async def handle_create_expense(
     )
 
 
-@expense_router.get("/summary", response_model=GetExpenseSummaryResponse)
+@expense_router.get(
+    "/summary",
+    response_model=GetExpenseSummaryResponse,
+)
 async def handle_get_expense_summary(
     curr_user: AuthenticatedUser,
     expense_service: ExpenseServiceInstance,
@@ -85,7 +95,12 @@ async def handle_get_expense_by_id(
     )
 
 
-@expense_router.put("/{expense_id}", response_model=BaseModel, response_model_exclude_none=True)
+@expense_router.put(
+    "/{expense_id}",
+    response_model=BaseResponse,
+    response_model_exclude_none=True,
+    dependencies=[Depends(required_roles([UserRole.Admin]))],
+)
 async def handle_update_expense(
     curr_user: AuthenticatedUser,
     expense_id: str,
@@ -95,7 +110,28 @@ async def handle_update_expense(
     expense = Expense(**update_expense_request.model_dump(by_alias=False))
     expense.id = expense_id
     await expense_service.update_expense(curr_user, expense)
-    return BaseModel(
+    return BaseResponse(
         status=status.HTTP_200_OK,
         message="Expense updated successfully",
+        data=None,
+    )
+
+
+@expense_router.patch(
+    "/{expense_id}",
+    response_model=BaseResponse,
+    response_model_exclude_none=True,
+    dependencies=[Depends(required_roles([UserRole.Admin]))],
+)
+async def handle_update_status(
+        curr_user: AuthenticatedUser,
+        expense_id: str,
+        data: UpdateExpenseStatusRequest,
+        expense_service: ExpenseServiceInstance,
+):
+    await expense_service.update_expense_status(curr_user.user_id, expense_id, data.status)
+    return BaseResponse(
+        status=status.HTTP_200_OK,
+        message="Expense status updated successfully",
+        data=None
     )

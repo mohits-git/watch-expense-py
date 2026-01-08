@@ -4,7 +4,7 @@ import asyncio
 from uuid import uuid4
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
-from app.interfaces import ExpenseRepository
+from app.interfaces import ExpenseRepository, AdvanceRepository
 from app.models.expense import (
     Expense,
     ExpenseSummary,
@@ -15,8 +15,9 @@ from app.models.user import UserClaims, UserRole
 
 
 class ExpenseService:
-    def __init__(self, expense_repo: ExpenseRepository):
+    def __init__(self, expense_repo: ExpenseRepository, advance_repo: AdvanceRepository):
         self.expense_repo = expense_repo
+        self.advance_repo = advance_repo
 
     async def get_expense_by_id(
             self, curr_user: UserClaims, expense_id: str) -> Expense:
@@ -30,9 +31,20 @@ class ExpenseService:
             raise AppException(AppErr.FORBIDDEN)
         return expense
 
-    async def create_expense(self, expense: Expense) -> str:
+    async def create_expense(self, curr_user: UserClaims, expense: Expense) -> str:
         expense.id = uuid4().hex
-        await self.expense_repo.save(expense)
+        expense.user_id = curr_user.user_id
+        expense.status = RequestStatus.Pending
+        expense.is_reconciled = bool(expense.advance_id)
+        if expense.advance_id:
+            existing_advance = await self.advance_repo.get(expense.advance_id)
+            if not existing_advance:
+                raise AppException(AppErr.INVALID_EXPENSE_RECONCILE_ADVANCE)
+            if existing_advance.user_id != curr_user.user_id:
+                raise AppException(AppErr.EXPENSE_RECONCILE_PERMISSION_DENIED)
+            await self.expense_repo.save(expense, expense.advance_id)
+        else:
+            await self.expense_repo.save(expense)
         return expense.id
 
     async def update_expense(self, curr_user: UserClaims, expense: Expense) -> None:
@@ -85,7 +97,7 @@ class ExpenseService:
         total, approved, pending, rejected = results
 
         return ExpenseSummary(
-            total_expenses=Decimal(total),
+            total_expense=Decimal(total),
             pending_expense=Decimal(approved),
             reimbursed_expense=Decimal(pending),
             rejected_expense=Decimal(rejected),
