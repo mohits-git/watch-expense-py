@@ -4,7 +4,7 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 
 class Department(BaseModel):
-    id: str = Field(alias="DepartmentID")
+    id: str = Field(alias="DepartmentID", default="")
     name: str = Field(alias="Name")
     budget: Decimal = Field(alias="Budget")
     created_at: Annotated[int, BeforeValidator(
