@@ -9,3 +9,5 @@ from .department_repository import DepartmentRepository
 from .expense_repository import ExpenseRepository
 from .project_repository import ProjectRepository
 from .user_repository import UserRepository
+from .image_metadata_repository import ImageMetadataRepository
+from .image_store import ImageStore

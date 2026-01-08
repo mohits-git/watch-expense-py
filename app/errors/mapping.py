@@ -15,10 +15,19 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.CANNOT_DELETE_SELF: (409, "Cannot delete oneself"),
 
     AppErr.PROJECT_ALREADY_EXISTS: (409, "Project already exists"),
+
     AppErr.DEPARTMENT_ALREADY_EXISTS: (409, "Department already exists"),
+
     AppErr.EXPENSE_ALREADY_EXISTS: (409, "Expense already exists"),
     AppErr.INVALID_EXPENSE_RECONCILE_ADVANCE: (422, "Invalid advance for reconciliation expense"),
     AppErr.EXPENSE_RECONCILE_PERMISSION_DENIED: (403, "Cannot reconcile expense with this advance"),
+
     AppErr.ADVANCE_ALREADY_EXISTS: (409, "Advance already exists"),
+
     AppErr.IMAGE_URL_ALREADY_EXIST: (409, "Image URL already exists"),
+    AppErr.IMAGE_URL_INVALID: (400, "Image URL is invalid"),
+    AppErr.IMAGE_UPLOAD_FAILED: (500, "Image upload failed"),
+    AppErr.IMAGE_DELETE_FAILED: (500, "Image delete failed"),
+    AppErr.FAILED_TO_GET_DOWNLOAD_URL: (500, "Failed to get image download URL"),
+    AppErr.IMAGE_NOT_FOUND: (404, "Image not found"),
 }

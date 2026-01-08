@@ -3,10 +3,10 @@ from typing import Protocol
 from app.models.image import ImageMetadata
 
 
-class ImageRepository(Protocol):
-    async def save_image_user_metadata(
+class ImageMetadataRepository(Protocol):
+    async def save(
         self, image_url: str, metadata: ImageMetadata) -> None: ...
-    async def get_image_user_metadata(
+    async def get(
         self, image_url: str) -> ImageMetadata | None: ...
 
-    async def delete_image_user_metadata(self, image_url: str) -> None: ...
+    async def delete(self, image_url: str) -> None: ...
