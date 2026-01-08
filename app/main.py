@@ -12,6 +12,7 @@ from app.routers.project import project_router
 from app.routers.department import department_router
 from app.routers.expense import expense_router
 from app.routers.advance import advance_router
+from app.routers.image import image_router
 
 
 app = FastAPI(lifespan=lifespan)
@@ -21,6 +22,7 @@ app.include_router(project_router, prefix="/api")
 app.include_router(department_router, prefix="/api")
 app.include_router(expense_router, prefix="/api")
 app.include_router(advance_router, prefix="/api")
+app.include_router(image_router, prefix="/api")
 
 origins = [
     "https://watchexpense.mohits.me",

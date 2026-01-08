@@ -30,6 +30,7 @@ class ExpenseDTO(BaseModel):
     approved_at: int | None = Field(alias="approvedAt", default=None)
     reviewed_by: str | None = Field(alias="reviewedBy", default=None)
     reviewed_at: int | None = Field(alias="reviewedAt", default=None)
+    bills: list[BillDTO] = Field(alias="bills", default_factory=list)
     created_at: Annotated[int, BeforeValidator(
         lambda x: int(x))] = Field(alias="createdAt", default=0)
     updated_at: Annotated[int, BeforeValidator(
@@ -61,7 +62,7 @@ class CreateExpenseRequest(BaseModel):
     purpose: str
     bills: list[BillDTO]
     is_reconciled: bool = Field(alias="isReconciled")
-    advance_id: str = Field(alias="advanceId")
+    advance_id: str | None = Field(alias="advanceId", default=None)
 
     # pydantic config
     model_config = ConfigDict(validate_by_name=True,
