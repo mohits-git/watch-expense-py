@@ -1,9 +1,10 @@
+import asyncio
 import uuid
 import time
 
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
-from types_aiobotocore_dynamodb.service_resource import Table
+from mypy_boto3_dynamodb.service_resource import Table
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.department import Department
@@ -42,10 +43,10 @@ class DepartmentRepository:
             department.updated_at = department.created_at
         primary_key = self._get_department_primary_key(department.id)
         try:
-            await self._table.put_item(
+            await asyncio.to_thread(lambda: self._table.put_item(
                 Item={**primary_key, **department.model_dump(by_alias=True)},
                 ConditionExpression="attribute_not_exists(PK) AND attribute_not_exists(SK)",
-            )
+            ))
         except self._table.meta.client.exceptions.ConditionalCheckFailedException as err:
             raise AppException(AppErr.DEPARTMENT_ALREADY_EXISTS, cause=err)
         except ClientError as err:
@@ -54,7 +55,7 @@ class DepartmentRepository:
     async def get(self, department_id: str) -> Department | None:
         try:
             primary_key = self._get_department_primary_key(department_id)
-            response = await self._table.get_item(Key=primary_key)
+            response = await asyncio.to_thread(lambda: self._table.get_item(Key=primary_key))
             if not response or "Item" not in response:
                 return None
             return self._parse_department_item(response["Item"])
@@ -63,10 +64,10 @@ class DepartmentRepository:
 
     async def get_all(self) -> list[Department]:
         try:
-            response = await self._table.query(
+            response = await asyncio.to_thread(lambda: self._table.query(
                 KeyConditionExpression=Key("PK").eq(self._pk)
                 & Key("SK").begins_with(self._sk_prefix)
-            )
+            ))
             if not response or "Items" not in response:
                 return []
             departments = [self._parse_department_item(item) for item in response["Items"]]
@@ -89,12 +90,12 @@ class DepartmentRepository:
 
         primary_key = self._get_department_primary_key(department.id)
         try:
-            await self._table.update_item(
+            await asyncio.to_thread(lambda: self._table.update_item(
                 Key=primary_key,
                 UpdateExpression=update_expr,
                 ExpressionAttributeNames=expr_names,
                 ExpressionAttributeValues=expr_values,
                 ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
-            )
+            ))
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to update department")

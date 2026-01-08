@@ -1,11 +1,12 @@
+import asyncio
 from decimal import Decimal
 import uuid
 import time
 
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
-from types_aiobotocore_dynamodb.service_resource import Table
-from types_aiobotocore_dynamodb.type_defs import QueryInputTableQueryTypeDef, TransactWriteItemTypeDef
+from mypy_boto3_dynamodb.service_resource import Table
+from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef, TransactWriteItemTypeDef
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.expense import Expense, ExpensesFilterOptions, RequestStatus
@@ -36,7 +37,7 @@ class ExpenseRepository:
     async def _get_user_id_by_expense_id(self, expense_id: str) -> str | None:
         try:
             lookup_primary_key = self._get_lookup_primary_key(expense_id)
-            response = await self._table.get_item(Key=lookup_primary_key)
+            response = await asyncio.to_thread(lambda: self._table.get_item(Key=lookup_primary_key))
             if not response or "Item" not in response:
                 return None
             return str(response["Item"]["UserID"])
@@ -103,8 +104,8 @@ class ExpenseRepository:
                 }
             })
         try:
-            await self._table.meta.client.transact_write_items(
-                TransactItems=transact_items)
+            await asyncio.to_thread(lambda: self._table.meta.client.transact_write_items(
+                TransactItems=transact_items))
         except self._table.meta.client.exceptions.TransactionCanceledException as err:
             reasons = err.response.get("CancellationReasons", [])
             codes = {r.get("Code") for r in reasons}
@@ -120,7 +121,7 @@ class ExpenseRepository:
             if not user_id:
                 return None
             primary_key = self._get_expense_primary_key(user_id, expense_id)
-            response = await self._table.get_item(Key=primary_key)
+            response = await asyncio.to_thread(lambda: self._table.get_item(Key=primary_key))
             if not response or "Item" not in response:
                 return None
             return self._parse_expense_item(response["Item"])
@@ -143,7 +144,8 @@ class ExpenseRepository:
 
             # Total count
             query_input["Select"] = "COUNT"
-            count_response = await self._table.query(**query_input)
+            count_response = await asyncio.to_thread(lambda: self._table.query(
+                **query_input))
             if "Count" not in count_response:
                 return ([], 0)
             total_records = int(count_response["Count"])
@@ -158,7 +160,7 @@ class ExpenseRepository:
             # query expenses
             query_input["Select"] = "ALL_ATTRIBUTES"
             query_input["Limit"] = filterOptions.limit
-            response = await self._table.query(**query_input)
+            response = await asyncio.to_thread(lambda: self._table.query(**query_input))
             if not response or "Items" not in response:
                 return ([], 0)
             expenses = [self._parse_expense_item(
@@ -184,13 +186,13 @@ class ExpenseRepository:
         primary_key = self._get_expense_primary_key(
             expense.user_id, expense.id)
         try:
-            await self._table.update_item(
+            await asyncio.to_thread(lambda: self._table.update_item(
                 Key=primary_key,
                 UpdateExpression=update_expr,
                 ExpressionAttributeNames=expr_names,
                 ExpressionAttributeValues=expr_values,
                 ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
-            )
+            ))
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to update expense")
 
@@ -207,7 +209,7 @@ class ExpenseRepository:
             if status is not None:
                 queryInput["FilterExpression"] = Attr("Status").eq(status)
 
-            response = await self._table.query(**queryInput)
+            response = await asyncio.to_thread(lambda: self._table.query(**queryInput))
             if not response or "Items" not in response:
                 return 0.0
 

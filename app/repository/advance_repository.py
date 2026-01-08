@@ -1,11 +1,12 @@
+import asyncio
 from decimal import Decimal
 import uuid
 import time
 
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
-from types_aiobotocore_dynamodb.service_resource import Table
-from types_aiobotocore_dynamodb.type_defs import (
+from mypy_boto3_dynamodb.service_resource import Table
+from mypy_boto3_dynamodb.type_defs import (
     QueryInputTableQueryTypeDef,
     TransactWriteItemTypeDef
 )
@@ -39,7 +40,7 @@ class AdvanceRepository:
     async def _get_user_id_by_advance_id(self, advance_id: str) -> str | None:
         try:
             lookup_primary_key = self._get_lookup_primary_key(advance_id)
-            response = await self._table.get_item(Key=lookup_primary_key)
+            response = await asyncio.to_thread(lambda: self._table.get_item(Key=lookup_primary_key))
             if not response or "Item" not in response:
                 return None
             return str(response["Item"]["UserID"])
@@ -89,8 +90,8 @@ class AdvanceRepository:
             },
         ]
         try:
-            await self._table.meta.client.transact_write_items(
-                TransactItems=transact_items)
+            await asyncio.to_thread(lambda: self._table.meta.client.transact_write_items(
+                TransactItems=transact_items))
         except self._table.meta.client.exceptions.TransactionCanceledException as err:
             reasons = err.response.get("CancellationReasons", [])
             codes = {r.get("Code") for r in reasons}
@@ -110,7 +111,7 @@ class AdvanceRepository:
             if not user_id:
                 return None
             primary_key = self._get_advance_primary_key(user_id, advance_id)
-            response = await self._table.get_item(Key=primary_key)
+            response = await asyncio.to_thread(lambda: self._table.get_item(Key=primary_key))
             if not response or "Item" not in response:
                 return None
             return self._parse_advance_item(response["Item"])
@@ -133,7 +134,7 @@ class AdvanceRepository:
 
             # Total count
             query_input["Select"] = "COUNT"
-            count_response = await self._table.query(**query_input)
+            count_response = await asyncio.to_thread(lambda: self._table.query(**query_input))
             if "Count" not in count_response:
                 return ([], 0)
             total_records = int(count_response["Count"])
@@ -148,7 +149,7 @@ class AdvanceRepository:
             # query advances
             query_input["Select"] = "ALL_ATTRIBUTES"
             query_input["Limit"] = filterOptions.limit
-            response = await self._table.query(**query_input)
+            response = await asyncio.to_thread(lambda: self._table.query(**query_input))
             if not response or "Items" not in response:
                 return ([], 0)
             advances = [self._parse_advance_item(
@@ -174,13 +175,13 @@ class AdvanceRepository:
         primary_key = self._get_advance_primary_key(
             advance.user_id, advance.id)
         try:
-            await self._table.update_item(
+            await asyncio.to_thread(lambda: self._table.update_item(
                 Key=primary_key,
                 UpdateExpression=update_expr,
                 ExpressionAttributeNames=expr_names,
                 ExpressionAttributeValues=expr_values,
                 ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
-            )
+            ))
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to update advance")
 
@@ -197,7 +198,7 @@ class AdvanceRepository:
             if status is not None:
                 queryInput["FilterExpression"] = Attr("Status").eq(status)
 
-            response = await self._table.query(**queryInput)
+            response = await asyncio.to_thread(lambda: self._table.query(**queryInput))
             if not response or "Items" not in response:
                 return 0.0
 
@@ -221,7 +222,7 @@ class AdvanceRepository:
                 & Attr("ReconciledExpenseID").size().gt(0),
             }
 
-            response = await self._table.query(**queryInput)
+            response = await asyncio.to_thread(lambda: self._table.query(**queryInput))
             if not response or "Items" not in response:
                 return 0.0
 

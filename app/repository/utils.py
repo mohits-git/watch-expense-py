@@ -1,6 +1,7 @@
+import asyncio
 from botocore.exceptions import ClientError
-from types_aiobotocore_dynamodb.service_resource import Table
-from types_aiobotocore_dynamodb.type_defs import QueryInputTableQueryTypeDef
+from mypy_boto3_dynamodb.service_resource import Table
+from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef
 
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
@@ -53,7 +54,7 @@ async def offset_query(
     while offset > 0:
         if last_evaluated_key is not None:
             query_input["ExclusiveStartKey"] = last_evaluated_key
-        result = await table.query(**query_input)
+        result = await asyncio.to_thread(lambda: table.query(**query_input))
         if "LastEvaluatedKey" not in result or "Items" not in result:
             return None
         last_evaluated_key = result["LastEvaluatedKey"]

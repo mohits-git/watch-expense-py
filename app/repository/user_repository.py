@@ -1,10 +1,11 @@
+import asyncio
 import uuid
 import time
 
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
-from types_aiobotocore_dynamodb.service_resource import Table
-from types_aiobotocore_dynamodb.type_defs import TransactWriteItemTypeDef
+from mypy_boto3_dynamodb.service_resource import Table
+from mypy_boto3_dynamodb.type_defs import TransactWriteItemTypeDef
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.user import User
@@ -39,9 +40,9 @@ class UserRepository:
     async def _get_email_by_id(self, user_id) -> str | None:
         primary_key = self._get_user_primary_key(user_id)
         try:
-            response = await self._table.get_item(
+            response = await asyncio.to_thread(lambda: self._table.get_item(
                 Key={**primary_key}, ProjectionExpression="Email"
-            )
+            ))
             if not response or "Item" not in response:
                 return None
             return str(response["Item"]["Email"])
@@ -79,8 +80,8 @@ class UserRepository:
             },
         ]
         try:
-            await self._table.meta.client.transact_write_items(
-                TransactItems=transact_items)
+            await asyncio.to_thread(lambda: self._table.meta.client.transact_write_items(
+                TransactItems=transact_items))
         except self._table.meta.client.exceptions.TransactionCanceledException as err:
             reasons = err.response.get("CancellationReasons", [])
             codes = {r.get("Code") for r in reasons}
@@ -97,7 +98,8 @@ class UserRepository:
     async def get(self, user_id: str) -> User | None:
         try:
             primary_key = self._get_user_primary_key(user_id)
-            response = await self._table.get_item(Key={**primary_key})
+            response = await asyncio.to_thread(
+                lambda: self._table.get_item(Key={**primary_key}))
             if not response or "Item" not in response:
                 return None
             return self._parse_user_item(response["Item"])
@@ -107,7 +109,8 @@ class UserRepository:
     async def get_by_email(self, email: str) -> User | None:
         try:
             lookup_pk = self._get_lookup_primary_key(email)
-            response = await self._table.get_item(Key={**lookup_pk})
+            response = await asyncio.to_thread(
+                lambda: self._table.get_item(Key={**lookup_pk}))
             if not response or "Item" not in response:
                 return None
             user_id = str(response["Item"]["UserID"])
@@ -118,9 +121,11 @@ class UserRepository:
 
     async def get_all(self) -> list[User]:
         try:
-            response = await self._table.query(
-                KeyConditionExpression=Key("PK").eq("USER")
-                & Key("SK").begins_with("PROFILE#")
+            response = await asyncio.to_thread(
+                lambda: self._table.query(
+                    KeyConditionExpression=Key("PK").eq("USER")
+                    & Key("SK").begins_with("PROFILE#")
+                )
             )
             if not response or "Items" not in response:
                 return []
@@ -138,9 +143,12 @@ class UserRepository:
                     f"User with user_id: {user_id} not found")
             primary_key = self._get_user_primary_key(user_id)
             lookup_pk = self._get_lookup_primary_key(email)
-            async with self._table.batch_writer() as batch:
-                await batch.delete_item(Key={**primary_key})
-                await batch.delete_item(Key={**lookup_pk})
+
+            def batch_write():
+                with self._table.batch_writer() as batch:
+                    batch.delete_item(Key={**primary_key})
+                    batch.delete_item(Key={**lookup_pk})
+            await asyncio.to_thread(batch_write)
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to delete user")
 
@@ -163,13 +171,13 @@ class UserRepository:
         primary_key = self._get_user_primary_key(user.id)
         if user.email == existing_email:
             try:
-                await self._table.update_item(
+                await asyncio.to_thread(lambda: self._table.update_item(
                     Key=primary_key,
                     UpdateExpression=update_expr,
                     ExpressionAttributeNames=expr_names,
                     ExpressionAttributeValues=expr_values,
                     ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
-                )
+                ))
                 return
             except ClientError as err:
                 raise utils.handle_dynamo_error(err, "Failed to update user")
@@ -201,7 +209,10 @@ class UserRepository:
             }
         ]
         try:
-            await self._table.meta.client.transact_write_items(TransactItems=transact_items)
+            await asyncio.to_thread(
+                lambda: self._table.meta.client.transact_write_items(
+                    TransactItems=transact_items)
+            )
         except self._table.meta.client.exceptions.TransactionCanceledException as err:
             reasons = err.response.get("CancellationReasons", [])
             codes = {r.get("Code") for r in reasons}
