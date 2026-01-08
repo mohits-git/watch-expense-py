@@ -134,7 +134,7 @@ class ExpenseRepository:
 
             # pagination / fast pagination
             query_input = await utils.offset_query(
-                self._table, query_input, filterOptions.page, filterOptions.limit
+                self._table, query_input, filterOptions.page - 1, filterOptions.limit
             )
             if query_input is None:
                 return ([], 0)

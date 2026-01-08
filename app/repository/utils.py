@@ -49,15 +49,15 @@ async def offset_query(
     offset = limit * page
     last_evaluated_key = None
 
+    query_input["Limit"] = limit
     while offset > 0:
         if last_evaluated_key is not None:
             query_input["ExclusiveStartKey"] = last_evaluated_key
-        query_input["Limit"] = limit
         result = await table.query(**query_input)
         if "LastEvaluatedKey" not in result or "Items" not in result:
             return None
         last_evaluated_key = result["LastEvaluatedKey"]
-        offset -= len(result["Items"])
+        offset -= limit
         if last_evaluated_key is None:
             break
 

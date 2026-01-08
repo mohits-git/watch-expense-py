@@ -44,7 +44,7 @@ class AdvanceService:
     async def get_all_advances(
         self, curr_user: UserClaims, filter_options: AdvancesFilterOptions
     ) -> tuple[list[Advance], int]:
-        if not filter_options.user_id or filter_options.user_id == "":
+        if curr_user.role != UserRole.Admin:
             filter_options.user_id = curr_user.user_id
         advances, total_count = await self.advance_repo.get_all(filter_options)
         return advances, total_count
@@ -64,7 +64,10 @@ class AdvanceService:
             existing_advance.reviewed_at = int(time.time())
         await self.advance_repo.update(existing_advance)
 
-    async def get_advance_summary(self, user_id: str = "") -> AdvanceSummary:
+    async def get_advance_summary(self, curr_user: UserClaims) -> AdvanceSummary:
+        user_id = ""
+        if curr_user.role != UserRole.Admin:
+            user_id = curr_user.user_id
         results = await asyncio.gather(
             self.advance_repo.get_sum(user_id, RequestStatus.Approved),
             self.advance_repo.get_reconciled_sum(user_id),

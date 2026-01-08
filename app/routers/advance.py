@@ -60,7 +60,7 @@ async def handle_get_advance_summary(
     curr_user: AuthenticatedUser,
     advance_service: AdvanceServiceInstance,
 ):
-    advance_summary = await advance_service.get_advance_summary(curr_user.user_id)
+    advance_summary = await advance_service.get_advance_summary(curr_user)
     return GetAdvanceSummaryResponse(
         status=status.HTTP_200_OK,
         message="Advance summary fetched successfully",

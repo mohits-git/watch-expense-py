@@ -5,7 +5,10 @@ import time
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
 from types_aiobotocore_dynamodb.service_resource import Table
-from types_aiobotocore_dynamodb.type_defs import QueryInputTableQueryTypeDef, TransactWriteItemTypeDef
+from types_aiobotocore_dynamodb.type_defs import (
+    QueryInputTableQueryTypeDef,
+    TransactWriteItemTypeDef
+)
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.advance import Advance, AdvancesFilterOptions, RequestStatus
@@ -59,7 +62,8 @@ class AdvanceRepository:
         if not advance.created_at:
             advance.created_at = int(time.time_ns() // 1e6)
             advance.updated_at = advance.created_at
-        primary_key = self._get_advance_primary_key(advance.user_id, advance.id)
+        primary_key = self._get_advance_primary_key(
+            advance.user_id, advance.id)
         lookup_pk = self._get_lookup_primary_key(advance.id)
 
         transact_items: list[TransactWriteItemTypeDef] = [
@@ -120,11 +124,12 @@ class AdvanceRepository:
         try:
             query_input: QueryInputTableQueryTypeDef | None = {
                 "KeyConditionExpression": Key("PK").eq(self._pk)
-                & Key("SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id}"),
+                & Key("SK").begins_with(f"{self._sk_prefix}{filterOptions.user_id or ''}"),
             }
 
             if filterOptions.status is not None:
-                query_input["FilterExpression"] = Attr("Status").eq(filterOptions.status)
+                query_input["FilterExpression"] = Attr(
+                    "Status").eq(filterOptions.status)
 
             # Total count
             query_input["Select"] = "COUNT"
@@ -135,7 +140,7 @@ class AdvanceRepository:
 
             # pagination / fast pagination
             query_input = await utils.offset_query(
-                self._table, query_input, filterOptions.page, filterOptions.limit
+                self._table, query_input, filterOptions.page - 1, filterOptions.limit
             )
             if query_input is None:
                 return ([], 0)
@@ -146,7 +151,8 @@ class AdvanceRepository:
             response = await self._table.query(**query_input)
             if not response or "Items" not in response:
                 return ([], 0)
-            advances = [self._parse_advance_item(item) for item in response["Items"]]
+            advances = [self._parse_advance_item(
+                item) for item in response["Items"]]
             return (advances, total_records)
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to fetch advances")
@@ -162,9 +168,11 @@ class AdvanceRepository:
         advance.updated_at = int(time.time_ns() // 1e6)
         exclude_fields = {"id", "created_at"}
         to_update = advance.model_dump(by_alias=True, exclude=exclude_fields)
-        update_expr, expr_names, expr_values = utils.build_update_expression(to_update)
+        update_expr, expr_names, expr_values = utils.build_update_expression(
+            to_update)
 
-        primary_key = self._get_advance_primary_key(advance.user_id, advance.id)
+        primary_key = self._get_advance_primary_key(
+            advance.user_id, advance.id)
         try:
             await self._table.update_item(
                 Key=primary_key,
@@ -200,13 +208,14 @@ class AdvanceRepository:
                     advances_sum += float(amount)
             return advances_sum
         except ClientError as err:
-            raise utils.handle_dynamo_error(err, "Failed to calculate advances sum")
+            raise utils.handle_dynamo_error(
+                err, "Failed to calculate advances sum")
 
     async def get_reconciled_sum(self, user_id: str) -> float:
         try:
             queryInput: QueryInputTableQueryTypeDef = {
                 "KeyConditionExpression": Key("PK").eq(self._pk)
-                & Key("SK").begins_with(f"{self._sk_prefix}{user_id}"),
+                & Key("SK").begins_with(f"{self._sk_prefix}{user_id or ''}"),
                 "ProjectionExpression": "Amount",
                 "FilterExpression": Attr("ReconciledExpenseID").exists()
                 & Attr("ReconciledExpenseID").size().gt(0),
@@ -223,4 +232,5 @@ class AdvanceRepository:
                     advances_sum += float(amount)
             return advances_sum
         except ClientError as err:
-            raise utils.handle_dynamo_error(err, "Failed to calculate reconciled advances sum")
+            raise utils.handle_dynamo_error(
+                err, "Failed to calculate reconciled advances sum")
