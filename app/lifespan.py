@@ -2,6 +2,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import boto3
 from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
+from mypy_boto3_s3 import S3Client
+
+from app.config import load_config
 
 from app.repository.department_repository import DepartmentRepository
 from app.repository.expense_repository import ExpenseRepository
@@ -25,17 +28,20 @@ from app.infra.s3_image_store import S3ImageStore
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # project config from env
+    config = load_config()
+
     # boto3 session
     session = boto3.Session()
 
     # ddb
     dynamodb_resource: DynamoDBServiceResource = session.resource("dynamodb")
-    table_name = "watch-expense-table"
+    table_name = config.dynamodb_table
     ddb_table = dynamodb_resource.Table(table_name)
 
     # s3
     bucket_name = "watch-expense-bucket"
-    s3_client = session.client("s3")
+    s3_client: S3Client = session.client("s3")
 
     # repos
     user_repo = UserRepository(ddb_table, table_name)
@@ -46,7 +52,11 @@ async def lifespan(app: FastAPI):
     image_metadata_repo = ImageMetadataRepository(ddb_table, table_name)
 
     # infra
-    token_provider = JWTTokenProvider('top-secret')
+    token_provider = JWTTokenProvider(
+        jwt_secret=config.jwt_secret,
+        issuer=config.jwt_issuer,
+        audience=config.jwt_audience,
+    )
     password_hasher = BcryptPasswordHasher()
     image_store = S3ImageStore(bucket_name, s3_client)
 
