@@ -1,16 +1,17 @@
+from boto3.resources.base import boto3
+from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
 import pytest
 from app.models.user import User, UserRole
-from app.repository import get_boto3_session
 from app.repository.user_repository import UserRepository
 import pytest_asyncio
 
 
 @pytest_asyncio.fixture
 async def user_repository():
-    session = get_boto3_session()
-    async with session.resource("dynamodb") as ddb_resource:
-        ddb_table = await ddb_resource.Table("watch-expense-table")
-        yield UserRepository(ddb_table, "watch-expense-table")
+    session = boto3.Session()
+    ddb_resource: DynamoDBServiceResource = session.resource("dynamodb")
+    ddb_table = ddb_resource.Table("watch-expense-table")
+    yield UserRepository(ddb_table, "watch-expense-table")
 
 
 class TestUserRepository:
