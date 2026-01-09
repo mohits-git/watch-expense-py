@@ -23,7 +23,7 @@ class ExpenseService:
             self, curr_user: UserClaims, expense_id: str) -> Expense:
         expense = await self.expense_repo.get(expense_id)
         if not expense:
-            raise AppException(AppErr.NOT_FOUND, "expense not found")
+            raise AppException(AppErr.NOT_FOUND, "Expense not found")
         if (
             expense.user_id != curr_user.user_id
             and curr_user.role != UserRole.Admin

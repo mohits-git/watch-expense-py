@@ -98,7 +98,6 @@ class AdvanceRepository:
             if "ConditionalCheckFailed" in codes:
                 raise AppException(
                     AppErr.ADVANCE_ALREADY_EXISTS,
-                    "Advance already exists",
                     cause=err,
                 )
             raise utils.handle_dynamo_error(err, "Failed to save advance")
@@ -163,7 +162,7 @@ class AdvanceRepository:
         if not existing_advance:
             raise AppException(
                 AppErr.NOT_FOUND,
-                f"advance with advance_id: {advance.id} not found",
+                "Advance not found",
             )
 
         advance.updated_at = int(time.time_ns() // 1e6)

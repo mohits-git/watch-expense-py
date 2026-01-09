@@ -76,7 +76,9 @@ async def handle_get_user_by_id(
 
 
 @_user_admin_only.put(
-    "/{user_id}", response_model=BaseResponse, response_model_exclude_none=True
+    "/{user_id}",
+    response_model=BaseResponse,
+    response_model_exclude_none=True,
 )
 async def handle_update_user(
     user_id: str,

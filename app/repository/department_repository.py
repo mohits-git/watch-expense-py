@@ -80,7 +80,7 @@ class DepartmentRepository:
         if not existing_department:
             raise AppException(
                 AppErr.NOT_FOUND,
-                f"Department with department_id: {department.id} not found",
+                "Department not found",
             )
 
         department.updated_at = int(time.time_ns() // 1e6)

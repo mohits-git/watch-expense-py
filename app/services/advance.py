@@ -38,8 +38,8 @@ class AdvanceService:
             and curr_user.role != UserRole.Admin
         ):
             raise AppException(
-                AppErr.FORBIDDEN
-            )
+                AppErr.FORBIDDEN,
+                "You don't have required permissions to update this Advance.")
         await self.advance_repo.update(advance)
 
     async def get_all_advances(

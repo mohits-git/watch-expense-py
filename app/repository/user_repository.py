@@ -88,7 +88,6 @@ class UserRepository:
             if "ConditionalCheckFailed" in codes:
                 raise AppException(
                     AppErr.USER_ALREADY_EXISTS,
-                    "User already exists",
                     cause=err,
                 )
             raise utils.handle_dynamo_error(err, "Failed to save user")
@@ -140,7 +139,7 @@ class UserRepository:
             if not email:
                 raise AppException(
                     AppErr.NOT_FOUND,
-                    f"User with user_id: {user_id} not found")
+                    "User not found")
             primary_key = self._get_user_primary_key(user_id)
             lookup_pk = self._get_lookup_primary_key(email)
 
@@ -157,7 +156,7 @@ class UserRepository:
         if not existing_email:
             raise AppException(
                 AppErr.NOT_FOUND,
-                f"User with user_id: {user.id} not found")
+                "User not found")
 
         # build update expression
         user.updated_at = int(time.time_ns() // 1e6)

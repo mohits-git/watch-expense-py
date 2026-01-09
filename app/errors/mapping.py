@@ -9,6 +9,11 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.INVALID: (400, "Invalid request"),
     AppErr.INTERNAL: (500, "Internal server error"),
     AppErr.THROTTLE: (429, "Too many requests"),
+    AppErr.VALIDATION: (422, "Vaildation Error"),
+
+    AppErr.INVALID_USER_CREDENTIALS: (401, "Invalid credentials"),
+    AppErr.ADMIN_ONLY: (403, "Admin access only"),
+    AppErr.PERMISSION_DENIED: (403, "Permission denied"),
 
     AppErr.USER_ALREADY_EXISTS: (409, "User already exists"),
     AppErr.CREATE_USER_PASSWORD_REQUIRED: (400, "Password is required"),
@@ -30,4 +35,5 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.IMAGE_DELETE_FAILED: (500, "Image delete failed"),
     AppErr.FAILED_TO_GET_DOWNLOAD_URL: (500, "Failed to get image download URL"),
     AppErr.IMAGE_NOT_FOUND: (404, "Image not found"),
+    AppErr.UNAUTHORIZED_IMAGE_ACCESS: (401, "Unauthorized image access"),
 }

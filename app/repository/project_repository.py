@@ -98,7 +98,6 @@ class ProjectRepository:
             if "ConditionalCheckFailed" in codes:
                 raise AppException(
                     AppErr.PROJECT_ALREADY_EXISTS,
-                    "Project already exists",
                     cause=err,
                 )
             raise utils.handle_dynamo_error(err, "Failed to save project")

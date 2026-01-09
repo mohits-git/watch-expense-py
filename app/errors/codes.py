@@ -11,16 +11,16 @@ class AppErr(enum.IntEnum):
     TIMEOUT = 1007
     TOO_LARGE = 1008
     THROTTLE = 1009
+    VALIDATION = 1010
 
     # Auth errors
-    INVALID_USER_CREDENTIAL = 2001
+    INVALID_USER_CREDENTIALS = 2001
     ADMIN_ONLY = 2002
-
+    PERMISSION_DENIED = 2003
     # User resource errors
     CREATE_USER_PASSWORD_REQUIRED = 3001
     USER_ALREADY_EXISTS = 3002
     CANNOT_DELETE_SELF = 3003
-
     # Project resource errors
     PROJECT_ALREADY_EXISTS = 4001
     # Department resource error

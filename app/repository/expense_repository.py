@@ -174,7 +174,7 @@ class ExpenseRepository:
         if not existing_expense:
             raise AppException(
                 AppErr.NOT_FOUND,
-                f"expense with expense_id: {expense.id} not found",
+                "Expense not found",
             )
 
         expense.updated_at = int(time.time_ns() // 1e6)
