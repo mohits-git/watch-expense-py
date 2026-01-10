@@ -3,6 +3,7 @@ import uuid
 import time
 
 from botocore.exceptions import ClientError
+from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef
 from pydantic import ValidationError
 from mypy_boto3_dynamodb.service_resource import Table
 from app.errors.app_exception import AppException
@@ -64,13 +65,12 @@ class DepartmentRepository:
 
     async def get_all(self) -> list[Department]:
         try:
-            response = await asyncio.to_thread(lambda: self._table.query(
-                KeyConditionExpression=Key("PK").eq(self._pk)
+            query_input: QueryInputTableQueryTypeDef = {
+                "KeyConditionExpression": Key("PK").eq(self._pk)
                 & Key("SK").begins_with(self._sk_prefix)
-            ))
-            if not response or "Items" not in response:
-                return []
-            departments = [self._parse_department_item(item) for item in response["Items"]]
+            }
+            items = await utils.query_items(self._table, query_input)
+            departments = [self._parse_department_item(item) for item in items]
             return departments
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to fetch departments")

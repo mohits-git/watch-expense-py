@@ -5,7 +5,7 @@ import time
 from botocore.utils import ClientError
 from pydantic import ValidationError
 from mypy_boto3_dynamodb.service_resource import Table
-from mypy_boto3_dynamodb.type_defs import TransactWriteItemTypeDef
+from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef, TransactWriteItemTypeDef
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.project import Project
@@ -113,15 +113,14 @@ class ProjectRepository:
 
     async def get_all(self) -> list[Project]:
         try:
-            response = await asyncio.to_thread(lambda: self._table.query(
-                KeyConditionExpression=Key("PK").eq(
+            query_input: QueryInputTableQueryTypeDef = {
+                "KeyConditionExpression": Key("PK").eq(
                     self._pk) & Key("SK").begins_with(self._sk_prefix)
-            ))
-            if not response or "Items" not in response:
-                raise Exception("Unable to fetch projects")
+            }
+            items = await utils.query_items(self._table, query_input)
             projects = [
                 self._parse_project_item(item)
-                for item in response["Items"]
+                for item in items
             ]
             return projects
         except ClientError as err:

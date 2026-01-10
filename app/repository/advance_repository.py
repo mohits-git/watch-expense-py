@@ -133,19 +133,16 @@ class AdvanceRepository:
 
             # pagination / fast pagination
             query_input = await utils.offset_query(
-                self._table, query_input, filterOptions.page - 1, filterOptions.limit
-            )
+                self._table, query_input, filterOptions.page - 1, filterOptions.limit)
             if query_input is None:
                 return ([], 0)
 
             # query advances
             query_input["Select"] = "ALL_ATTRIBUTES"
             query_input["Limit"] = filterOptions.limit
-            response = await asyncio.to_thread(lambda: self._table.query(**query_input))
-            if not response or "Items" not in response:
-                return ([], 0)
+            items = await utils.query_items(self._table, query_input, filterOptions.limit)
             advances = [self._parse_advance_item(
-                item) for item in response["Items"]]
+                item) for item in items]
             return (advances, total_records)
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to fetch advances")
@@ -190,12 +187,10 @@ class AdvanceRepository:
             if status is not None:
                 queryInput["FilterExpression"] = Attr("Status").eq(status)
 
-            response = await asyncio.to_thread(lambda: self._table.query(**queryInput))
-            if not response or "Items" not in response:
-                return 0.0
+            items = await utils.query_items(self._table, queryInput)
 
             advances_sum = 0.0
-            for item in response["Items"]:
+            for item in items:
                 amount = item["Amount"]
                 if amount and isinstance(amount, Decimal):
                     advances_sum += float(amount)
@@ -214,12 +209,10 @@ class AdvanceRepository:
                 & Attr("ReconciledExpenseID").size().gt(0),
             }
 
-            response = await asyncio.to_thread(lambda: self._table.query(**queryInput))
-            if not response or "Items" not in response:
-                return 0.0
+            items = await utils.query_items(self._table, queryInput)
 
             advances_sum = 0.0
-            for item in response["Items"]:
+            for item in items:
                 amount = item["Amount"]
                 if amount and isinstance(amount, Decimal):
                     advances_sum += float(amount)

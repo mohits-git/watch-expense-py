@@ -140,8 +140,7 @@ class ExpenseRepository:
 
             # Total count
             query_input["Select"] = "COUNT"
-            count_response = await asyncio.to_thread(lambda: self._table.query(
-                **query_input))
+            count_response = await asyncio.to_thread(lambda: self._table.query(**query_input))
             if "Count" not in count_response:
                 return ([], 0)
             total_records = int(count_response["Count"])
@@ -156,11 +155,8 @@ class ExpenseRepository:
             # query expenses
             query_input["Select"] = "ALL_ATTRIBUTES"
             query_input["Limit"] = filterOptions.limit
-            response = await asyncio.to_thread(lambda: self._table.query(**query_input))
-            if not response or "Items" not in response:
-                return ([], 0)
-            expenses = [self._parse_expense_item(
-                item) for item in response["Items"]]
+            items = await utils.query_items(self._table, query_input, filterOptions.limit)
+            expenses = [self._parse_expense_item(item) for item in items]
             return (expenses, total_records)
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to fetch expenses")
@@ -205,12 +201,10 @@ class ExpenseRepository:
             if status is not None:
                 queryInput["FilterExpression"] = Attr("Status").eq(status)
 
-            response = await asyncio.to_thread(lambda: self._table.query(**queryInput))
-            if not response or "Items" not in response:
-                return 0.0
+            items = await utils.query_items(self._table, queryInput)
 
             expenses_sum = 0.0
-            for item in response["Items"]:
+            for item in items:
                 amount = item["Amount"]
                 if amount and isinstance(amount, Decimal):
                     expenses_sum += float(amount)

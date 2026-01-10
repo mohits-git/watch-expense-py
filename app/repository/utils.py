@@ -58,7 +58,7 @@ async def offset_query(
         if "LastEvaluatedKey" not in result or "Items" not in result:
             return None
         last_evaluated_key = result["LastEvaluatedKey"]
-        offset -= limit
+        offset -= len(result["Items"])
         if last_evaluated_key is None:
             break
 
@@ -78,16 +78,37 @@ async def offset_query(
     return query_input
 
 
+async def query_items(ddb_table: Table,
+                      query_input: QueryInputTableQueryTypeDef,
+                      limit: int | None = None) -> list[dict]:
+    items: list[dict] = []
+    while True:
+        if limit is not None:
+            remaining = limit - len(items)
+            if remaining <= 0:
+                break
+            query_input["Limit"] = remaining
+        response = await asyncio.to_thread(
+            lambda: ddb_table.query(**query_input)
+        )
+        if not response or "Items" not in response:
+            break
+        response_items = response["Items"]
+        items.extend(response_items)
+        if "LastEvaluatedKey" not in response or response["LastEvaluatedKey"] is None:
+            break
+        query_input["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+        if limit is not None:
+            if len(items) >= limit:
+                items = items[:limit]
+                break
+    return items
+
+
 def handle_dynamo_error(err: ClientError, msg: str = "Operation failed") -> AppException:
     code = err.response.get("Error", {}).get("Code", "")
     if code == "ProvisionedThroughputExceededException":
         return AppException(AppErr.THROTTLE)
-    # DEV:
-    # if code == 'TransactionCanceledException':
-    #     print("Transaction Cancellation reasons:")
-    #     for reason in err.response.get('CancellationReasons', []):
-    #         print(f"- Code: {reason.get('Code')
-    #                          }, Message: {reason.get('Message')}")
     return AppException(AppErr.INTERNAL, msg, cause=err)
 
 

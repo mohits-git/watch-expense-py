@@ -5,7 +5,7 @@ import time
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
 from mypy_boto3_dynamodb.service_resource import Table
-from mypy_boto3_dynamodb.type_defs import TransactWriteItemTypeDef
+from mypy_boto3_dynamodb.type_defs import QueryInputTableQueryTypeDef, TransactWriteItemTypeDef
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.user import User
@@ -113,15 +113,12 @@ class UserRepository:
 
     async def get_all(self) -> list[User]:
         try:
-            response = await asyncio.to_thread(
-                lambda: self._table.query(
-                    KeyConditionExpression=Key("PK").eq("USER")
-                    & Key("SK").begins_with("PROFILE#")
-                )
-            )
-            if not response or "Items" not in response:
-                return []
-            users = [self._parse_user_item(item) for item in response["Items"]]
+            query_input: QueryInputTableQueryTypeDef = {
+                "KeyConditionExpression": Key("PK").eq("USER")
+                & Key("SK").begins_with("PROFILE#")
+            }
+            items = await utils.query_items(self._table, query_input)
+            users = [self._parse_user_item(item) for item in items]
             return users
         except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to fetch users")
