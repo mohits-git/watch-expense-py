@@ -10,12 +10,7 @@ class Config:
     jwt_secret: str = ""
     jwt_issuer: str = ""
     jwt_audience: str = ""
-    upload_directory: str = ""
     s3_bucket_name: str = ""
-
-
-def _get_env(name: str) -> str:
-    return os.getenv(name) or ""
 
 
 _config = None
@@ -26,12 +21,11 @@ def load_config() -> Config:
     if not _config:
         load_dotenv()
         _config = Config(
-            environment=_get_env("ENVIRONMENT"),
-            dynamodb_table=_get_env("DYNAMODB_TABLE"),
-            jwt_secret=_get_env("JWT_SECRET"),
-            jwt_issuer=_get_env("JWT_ISSUER"),
-            jwt_audience=_get_env("JWT_AUDIENCE"),
-            upload_directory=_get_env("UPLOAD_DIRECTORY"),
-            s3_bucket_name=_get_env("S3_BUCKET_NAME"),
+            environment=os.getenv("ENVIRONMENT") or "production",
+            dynamodb_table=os.getenv("DYNAMODB_TABLE") or "watch-expense-table",
+            jwt_secret=os.getenv("JWT_SECRET") or "YsQz/FBocPkAhbtLO1AzGQ6lG/hn14zw4ebMp+NToik=",
+            jwt_issuer=os.getenv("JWT_ISSUER") or "https://api.watchexpense.mohits.me",
+            jwt_audience=os.getenv("JWT_AUDIENCE") or "https://api.watchexpense.mohits.me",
+            s3_bucket_name=os.getenv("S3_BUCKET_NAME") or "watch-expense-bucket",
         )
     return _config
