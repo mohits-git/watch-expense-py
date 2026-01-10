@@ -1,107 +1,200 @@
 from decimal import Decimal
-import time
+from uuid import uuid4
 import pytest
 import pytest_asyncio
+from app.errors.app_exception import AppException
+from app.errors.codes import AppErr
 from app.models.expense import Bill, Expense, ExpensesFilterOptions, RequestStatus
-from app.repository import get_boto3_session
 from app.repository.expense_repository import ExpenseRepository
 
 
-@pytest_asyncio.fixture
-async def expense_repository():
-    session = get_boto3_session()
-    async with session.resource("dynamodb") as ddb_resource:
-        ddb_table = await ddb_resource.Table("watch-expense-table")
-        yield ExpenseRepository(ddb_table, "watch-expense-table")
-
-
 class TestExpenseRepository:
-    @pytest.mark.asyncio
-    async def test_get_all(self, expense_repository):
-        filterOptions = ExpensesFilterOptions(
-            user_id="",
-            status=RequestStatus.Pending,
-            page=0,
-            limit=5,
-        )
-        print(await expense_repository.get_all(filterOptions))
-        # TODO: tests
-        pass
+    @pytest_asyncio.fixture(scope="class")
+    async def expense_repository(self, ddb_table, table_name):
+        return ExpenseRepository(ddb_table, table_name)
+
+    @pytest_asyncio.fixture(scope="class")
+    async def user_id(self) -> str:
+        return uuid4().hex
+
+    @pytest_asyncio.fixture(scope="class")
+    async def expense_uuid(self) -> str:
+        return uuid4().hex
+
+    @pytest_asyncio.fixture(scope="class")
+    async def expense(self, expense_uuid, user_id):
+        return Expense.model_validate({
+            "id": expense_uuid,
+            "user_id": user_id,
+            "purpose": "test purpose",
+            "description": "test description",
+            "amount": Decimal("150.75"),
+            "status": RequestStatus.Pending,
+            "is_reconciled": False,
+            "bills": [
+                {
+                    "id": uuid4().hex,
+                    "amount": Decimal("150.75"),
+                    "description": "bill 1",
+                    "attachment_url": "https://example.com/bill1.pdf",
+                }
+            ],
+        })
 
     @pytest.mark.asyncio
-    async def test_get(self, expense_repository):
-        print(await expense_repository.get("a97a4962-dcb9-43a4-aed4-2f5c23a352c0"))
-        pass
-
-    @pytest.mark.asyncio
-    async def test_save(self, expense_repository):
-        expense = Expense.model_validate(
-            {
-                "id": "37d593c2-d9d2-4171-98de-e06dfb939b01",
-                "user_id": "4e3e8d1a-99f1-4b50-997d-4dac70832fb6",
-                "amount": Decimal("101"),
-                "description": "Testing Expense Request",
-                "purpose": "Testing Expense",
-                "status": RequestStatus.Pending,
-                "is_reconciled": False,
-                "bills": [
-                    Bill.model_validate(
-                        {
-                            "id": "4dbc7acf-dfbb-4eec-afea-864a5e55c4ee",
-                            "amount": Decimal("101"),
-                            "description": "reciept test",
-                            "attachment_url": "https://watch-expense-bucket.s3.amazonaws.com/4e8d6de9-b585-44a2-acb9-54fabac3ed8f_Screenshot 2025-11-10 144458.png",
-                        }
-                    )
-                ],
-            }
-        )
+    async def test_save(self, expense_repository, expense):
         await expense_repository.save(expense)
-        pass
 
     @pytest.mark.asyncio
-    async def test_update(self, expense_repository):
-        expense = Expense.model_validate(
-            {
-                "id": "a97a4962-dcb9-43a4-aed4-2f5c23a352c0",
-                "user_id": "4e3e8d1a-99f1-4b50-997d-4dac70832fb6",
-                "amount": Decimal("102"),
-                "description": "Testing Expense Request",
-                "purpose": "Testing Expense",
-                "status": RequestStatus.Approved,
-                "is_reconciled": False,
-                "approved_at": int(time.time_ns() // 1e6),
-                "approved_by": "589c725c-f47b-442c-bd41-b9687ae8d645",
-                "reviewed_at": int(time.time_ns() // 1e6),
-                "reviewed_by": "589c725c-f47b-442c-bd41-b9687ae8d645",
-                "bills": [
-                    Bill.model_validate(
-                        {
-                            "id": "4dbc7acf-dfbb-4eec-afea-864a5e55c4ee",
-                            "amount": Decimal("102"),
-                            "description": "reciept test2",
-                            "attachment_url": "https://watch-expense-bucket.s3.amazonaws.com/4e8d6de9-b585-44a2-acb9-54fabac3ed8f_Screenshot 2025-11-10 144458.png",
-                        }
-                    )
-                ],
-            }
-        )
+    async def test_save_expense_already_exist(self, expense_repository, expense):
+        with pytest.raises(AppException) as app_exc:
+            await expense_repository.save(expense)
+        assert app_exc.value.err_code == AppErr.EXPENSE_ALREADY_EXISTS
+
+    @pytest.mark.asyncio
+    async def test_get(self, expense_repository, expense):
+        result = await expense_repository.get(expense.id)
+        assert result is not None
+        assert result.id == expense.id
+        assert result.user_id == expense.user_id
+        assert result.purpose == expense.purpose
+        assert result.description == expense.description
+        assert result.amount == expense.amount
+        assert result.status == expense.status
+        assert result.is_reconciled == expense.is_reconciled
+        assert len(result.bills) == 1
+        assert result.bills[0].amount == expense.bills[0].amount
+
+    @pytest.mark.asyncio
+    async def test_get_non_existent(self, expense_repository):
+        result = await expense_repository.get("non-existent-id")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update(self, expense_repository, expense):
+        expense.purpose = "updated purpose"
+        expense.description = "updated description"
+        expense.amount = Decimal("300.00")
+        expense.status = RequestStatus.Approved
+
         await expense_repository.update(expense)
-        print(expense_repository.get(expense.id))
-        pass
+
+        result = await expense_repository.get(expense.id)
+        assert result is not None
+        assert result.purpose == "updated purpose"
+        assert result.description == "updated description"
+        assert result.amount == Decimal("300.00")
+        assert result.status == RequestStatus.Approved
 
     @pytest.mark.asyncio
-    async def test_get_expense_status(self, expense_repository):
-        expense_sum_all = await expense_repository.get_expense_sum()
-        expense_sum_pending = await expense_repository.get_expense_sum(
+    async def test_update_non_existent(self, expense_repository, user_id):
+        non_existent_expense = Expense.model_validate({
+            "id": "non-existent-id",
+            "user_id": user_id,
+            "purpose": "test",
+            "description": "test",
+            "amount": Decimal("100"),
+            "status": RequestStatus.Pending,
+            "is_reconciled": False,
+        })
+        with pytest.raises(AppException) as app_exc:
+            await expense_repository.update(non_existent_expense)
+        assert app_exc.value.err_code == AppErr.NOT_FOUND
+
+
+class TestExpenseRepositoryGetAll:
+    """Test class for get_all with multiple expenses"""
+
+    @pytest_asyncio.fixture(scope="class")
+    async def expense_repository(self, ddb_table, table_name):
+        return ExpenseRepository(ddb_table, table_name)
+
+    @pytest_asyncio.fixture(scope="class")
+    async def user_id(self) -> str:
+        return uuid4().hex
+
+    @pytest_asyncio.fixture(scope="class")
+    async def setup_expenses(self, expense_repository, user_id):
+        """Create multiple expenses for testing get_all and aggregation methods"""
+        expenses = [
+            Expense.model_validate({
+                "id": uuid4().hex,
+                "user_id": user_id,
+                "purpose": f"purpose {i}",
+                "description": f"description {i}",
+                "amount": Decimal(f"{100 * (i + 1)}"),
+                "status": RequestStatus.Pending if i % 3 == 0 else (
+                    RequestStatus.Approved if i % 3 == 1 else RequestStatus.Rejected
+                ),
+                "is_reconciled": i % 2 == 0,
+                "bills": [],
+            })
+            for i in range(5)
+        ]
+
+        for expense in expenses:
+            await expense_repository.save(expense)
+
+        return expenses
+
+    @pytest.mark.asyncio
+    async def test_get_all_no_filter(self, expense_repository, user_id, setup_expenses):
+        filter_options = ExpensesFilterOptions(user_id=user_id, page=1, limit=10)
+        expenses, total = await expense_repository.get_all(filter_options)
+
+        assert total == 5
+        assert len(expenses) == 5
+
+    @pytest.mark.asyncio
+    async def test_get_all_with_pagination(self, expense_repository, user_id, setup_expenses):
+        filter_options = ExpensesFilterOptions(user_id=user_id, page=1, limit=2)
+        expenses, total = await expense_repository.get_all(filter_options)
+
+        assert total == 5
+        assert len(expenses) == 2
+
+    @pytest.mark.asyncio
+    async def test_get_all_with_status_filter(self, expense_repository, user_id, setup_expenses):
+        filter_options = ExpensesFilterOptions(
+            user_id=user_id,
+            page=1,
+            limit=10,
             status=RequestStatus.Pending
         )
-        expense_sum_user = await expense_repository.get_expense_sum(
-            user_id="4e3e8d1a-99f1-4b50-997d-4dac70832fb6"
+        expenses, total = await expense_repository.get_all(filter_options)
+
+        # Indices 0, 3 have Pending status (i % 3 == 0)
+        assert total == 2
+        for expense in expenses:
+            assert expense.status == RequestStatus.Pending
+
+    @pytest.mark.asyncio
+    async def test_get_all_empty_result(self, expense_repository):
+        non_existent_user_id = uuid4().hex
+        filter_options = ExpensesFilterOptions(
+            user_id=non_existent_user_id,
+            page=1,
+            limit=10
         )
-        print("-------------")
-        print("ALL: ", expense_sum_all)
-        print("Pending: ", expense_sum_pending)
-        print("User: ", expense_sum_user)
-        print("-------------")
-        pass
+        expenses, total = await expense_repository.get_all(filter_options)
+
+        assert total == 0
+        assert len(expenses) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_sum(self, expense_repository, user_id, setup_expenses):
+        # Total sum: 100 + 200 + 300 + 400 + 500 = 1500
+        total_sum = await expense_repository.get_sum(user_id)
+        assert total_sum == 1500.0
+
+    @pytest.mark.asyncio
+    async def test_get_sum_with_status(self, expense_repository, user_id, setup_expenses):
+        # Pending expenses: indices 0, 3 -> amounts 100 + 400 = 500
+        pending_sum = await expense_repository.get_sum(user_id, RequestStatus.Pending)
+        assert pending_sum == 500.0
+
+    @pytest.mark.asyncio
+    async def test_get_sum_empty(self, expense_repository):
+        non_existent_user_id = uuid4().hex
+        total_sum = await expense_repository.get_sum(non_existent_user_id)
+        assert total_sum == 0.0
