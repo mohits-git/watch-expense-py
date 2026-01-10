@@ -106,13 +106,9 @@ class ExpenseRepository:
         try:
             await asyncio.to_thread(lambda: self._table.meta.client.transact_write_items(
                 TransactItems=transact_items))
-        except self._table.meta.client.exceptions.TransactionCanceledException as err:
-            reasons = err.response.get("CancellationReasons", [])
-            codes = {r.get("Code") for r in reasons}
-            if "ConditionalCheckFailed" in codes:
-                raise AppException(AppErr.EXPENSE_ALREADY_EXISTS, cause=err)
-            raise utils.handle_dynamo_error(err, "Failed to save expense")
         except ClientError as err:
+            if utils.is_conditional_check_failure(err):
+                raise AppException(AppErr.EXPENSE_ALREADY_EXISTS, cause=err)
             raise utils.handle_dynamo_error(err, "Failed to save expense")
 
     async def get(self, expense_id: str) -> Expense | None:

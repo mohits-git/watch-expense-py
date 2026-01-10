@@ -30,9 +30,9 @@ class ImageMetadataRepository:
                 },
                 ConditionExpression="attribute_not_exists(PK) AND attribute_not_exists(SK)",
             ))
-        except self._table.meta.client.exceptions.ConditionalCheckFailedException as err:
-            raise AppException(AppErr.IMAGE_URL_ALREADY_EXIST, cause=err)
         except ClientError as err:
+            if utils.is_conditional_check_failure(err):
+                raise AppException(AppErr.IMAGE_URL_ALREADY_EXIST, cause=err)
             raise utils.handle_dynamo_error(err)
 
     async def get(self, image_url: str) -> ImageMetadata | None:

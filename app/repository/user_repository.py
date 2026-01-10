@@ -82,16 +82,9 @@ class UserRepository:
         try:
             await asyncio.to_thread(lambda: self._table.meta.client.transact_write_items(
                 TransactItems=transact_items))
-        except self._table.meta.client.exceptions.TransactionCanceledException as err:
-            reasons = err.response.get("CancellationReasons", [])
-            codes = {r.get("Code") for r in reasons}
-            if "ConditionalCheckFailed" in codes:
-                raise AppException(
-                    AppErr.USER_ALREADY_EXISTS,
-                    cause=err,
-                )
-            raise utils.handle_dynamo_error(err, "Failed to save user")
         except ClientError as err:
+            if utils.is_conditional_check_failure(err):
+                raise AppException(AppErr.USER_ALREADY_EXISTS, cause=err)
             raise utils.handle_dynamo_error(err, "Failed to save user")
 
     async def get(self, user_id: str) -> User | None:
@@ -212,19 +205,11 @@ class UserRepository:
                 lambda: self._table.meta.client.transact_write_items(
                     TransactItems=transact_items)
             )
-        except self._table.meta.client.exceptions.TransactionCanceledException as err:
-            reasons = err.response.get("CancellationReasons", [])
-            codes = {r.get("Code") for r in reasons}
-            if "ConditionalCheckFailed" in codes:
+        except ClientError as err:
+            if utils.is_conditional_check_failure(err):
                 raise AppException(
                     AppErr.NOT_FOUND,
                     "User not found",
                     cause=err,
                 )
-            raise AppException(
-                AppErr.INTERNAL,
-                "Failed to save user",
-                cause=err,
-            )
-        except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to update user")

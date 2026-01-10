@@ -92,16 +92,9 @@ class ProjectRepository:
             await asyncio.to_thread(
                 lambda: self._table.meta.client.transact_write_items(
                     TransactItems=transact_items))
-        except self._table.meta.client.exceptions.TransactionCanceledException as err:
-            reasons = err.response.get("CancellationReasons", [])
-            codes = {r.get("Code") for r in reasons}
-            if "ConditionalCheckFailed" in codes:
-                raise AppException(
-                    AppErr.PROJECT_ALREADY_EXISTS,
-                    cause=err,
-                )
-            raise utils.handle_dynamo_error(err, "Failed to save project")
         except ClientError as err:
+            if utils.is_conditional_check_failure(err):
+                raise AppException(AppErr.PROJECT_ALREADY_EXISTS, cause=err)
             raise utils.handle_dynamo_error(err, "Failed to save project")
 
     async def get(self, project_id: str) -> Project | None:
@@ -201,17 +194,14 @@ class ProjectRepository:
         ]
 
         try:
-            await asyncio.to_thread(lambda: self._table.meta.client.transact_write_items(
-                TransactItems=transact_items))
-        except self._table.meta.client.exceptions.TransactionCanceledException as err:
-            reasons = err.response.get("CancellationReasons", [])
-            codes = {r.get("Code") for r in reasons}
-            if "ConditionalCheckFailed" in codes:
+            await asyncio.to_thread(
+                lambda: self._table.meta.client.transact_write_items(
+                    TransactItems=transact_items))
+        except ClientError as err:
+            if utils.is_conditional_check_failure(err):
                 raise AppException(
                     AppErr.NOT_FOUND,
                     "User not found",
                     cause=err,
                 )
-            raise utils.handle_dynamo_error(err, "Failed to update project")
-        except ClientError as err:
             raise utils.handle_dynamo_error(err, "Failed to update project")

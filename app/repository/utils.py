@@ -89,3 +89,15 @@ def handle_dynamo_error(err: ClientError, msg: str = "Operation failed") -> AppE
     #         print(f"- Code: {reason.get('Code')
     #                          }, Message: {reason.get('Message')}")
     return AppException(AppErr.INTERNAL, msg, cause=err)
+
+
+def is_conditional_check_failure(err: ClientError):
+    code = err.response.get("Error", {}).get("Code", "")
+    if code == 'TransactionCanceledException':
+        reasons = err.response.get("CancellationReasons", [])
+        codes = {r.get("Code") for r in reasons}
+        if "ConditionalCheckFailed" in codes:
+            return True
+    elif code == "ConditionalCheckFailedException":
+        return True
+    return False

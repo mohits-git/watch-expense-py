@@ -92,16 +92,9 @@ class AdvanceRepository:
         try:
             await asyncio.to_thread(lambda: self._table.meta.client.transact_write_items(
                 TransactItems=transact_items))
-        except self._table.meta.client.exceptions.TransactionCanceledException as err:
-            reasons = err.response.get("CancellationReasons", [])
-            codes = {r.get("Code") for r in reasons}
-            if "ConditionalCheckFailed" in codes:
-                raise AppException(
-                    AppErr.ADVANCE_ALREADY_EXISTS,
-                    cause=err,
-                )
-            raise utils.handle_dynamo_error(err, "Failed to save advance")
         except ClientError as err:
+            if utils.is_conditional_check_failure(err):
+                raise AppException(AppErr.ADVANCE_ALREADY_EXISTS, cause=err)
             raise utils.handle_dynamo_error(err, "Failed to save advance")
 
     async def get(self, advance_id: str) -> Advance | None:
