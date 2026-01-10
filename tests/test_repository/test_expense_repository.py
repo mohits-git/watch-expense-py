@@ -183,13 +183,13 @@ class TestExpenseRepositoryGetAll:
 
     @pytest.mark.asyncio
     async def test_get_sum(self, expense_repository, user_id, setup_expenses):
-        # Total sum: 100 + 200 + 300 + 400 + 500 = 1500
+        # 100 + 200 + 300 + 400 + 500 = 1500
         total_sum = await expense_repository.get_sum(user_id)
         assert total_sum == 1500.0
 
     @pytest.mark.asyncio
     async def test_get_sum_with_status(self, expense_repository, user_id, setup_expenses):
-        # Pending expenses: indices 0, 3 -> amounts 100 + 400 = 500
+        # 0, 3 -> 100 + 400 = 500
         pending_sum = await expense_repository.get_sum(user_id, RequestStatus.Pending)
         assert pending_sum == 500.0
 
