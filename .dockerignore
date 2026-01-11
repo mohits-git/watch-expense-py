@@ -9,3 +9,4 @@ tests/
 *.log
 venv/
 .venv/
+deploy/
