@@ -1,0 +1,328 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template to create an ECS cluster with Fargate service for watch-expense backend application
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id where ECS cluster and service will be deployed
+    Default: vpc-0612636dc85f02873
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets for the ECS service. Must be from the specified VPC.
+    Default: subnet-09f7e754765feffce,subnet-06a44e81816b3956a,subnet-01d9ec4f054ca331a
+  DesiredTaskCount:
+    Type: Number
+    Description: Initial desired number of tasks
+    Default: 1
+  ContainerImageURI:
+    Type: String
+    Description: URI for your container image
+    Default: 873335417993.dkr.ecr.ap-south-1.amazonaws.com/mohits-ecr/watch-expense-py
+  WatchExpenseSecretsArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret for Watch
+    Default: arn:aws:secretsmanager:us-east-1:873335417993:secret:watch-expense-backend-cjAARe
+  HostedZoneId:
+    Type: String
+    Description: Route53 hosted zone id
+    Default: Z10038311RTI4QU4LIGAH
+  ApiDomain:
+    Type: String
+    Description: e.g. api.watchexpense.mohits.me
+    Default: api.watchexpense.mohits.me
+
+Resources:
+  WatchExpenseTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: watch-expense-py-table
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 25
+        WriteCapacityUnits: 25
+
+  WatchExpenseDynamoDBAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: WatchExpensePy-DynamoDB-Access-Policy
+      Description: Provides read/write access to WatchExpense DynamoDB table
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:PutItem'
+              - 'dynamodb:GetItem'
+              - 'dynamodb:UpdateItem'
+              - 'dynamodb:DeleteItem'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+            Resource:
+              Fn::GetAtt:
+                - WatchExpenseTable
+                - Arn
+
+  WatchExpensePublicBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: watch-expense-py-bucket
+
+  WatchExpenseS3AccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: WatchExpensePy-S3-Access-Policy
+      Description: Provides read/write access to WatchExpense S3 bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:DeleteObject'
+            Resource:
+              - !Sub arn:aws:s3:::watch-expense-py-bucket/*
+              - !Sub arn:aws:s3:::watch-expense-py-bucket
+
+  SecretsAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: !Ref WatchExpenseSecretsArn
+
+  WatchExpenseECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - !Ref SecretsAccessPolicy
+      Path: /
+      RoleName: WatchExpenseECSTaskExecutionRole
+
+  WatchExpenseECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref WatchExpenseDynamoDBAccessPolicy
+        - !Ref WatchExpenseS3AccessPolicy
+
+  WatchExpenseALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow internet to ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  WatchExpenseECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Only ALB can access ECS
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref WatchExpenseALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  WatchExpenseECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: watch-expense-py-cluster
+      CapacityProviders:
+        - FARGATE
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+
+
+  WatchExpenseLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/watch-expense-py
+      RetentionInDays: 7
+
+  WatchExpenseTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: watch-expense-task
+      Cpu: '1024'
+      Memory: '2048'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !GetAtt WatchExpenseECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt WatchExpenseECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: watch-expense-py-backend-container
+          Essential: true
+          Image: !Ref ContainerImageURI
+          PortMappings:
+            - ContainerPort: 8000
+              Protocol: tcp
+          HealthCheck:
+            Command: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+            Interval: 30
+            Retries: 3
+            StartPeriod: 60
+            Timeout: 10
+          Environment:
+            - Name: ENVIRONMENT
+              Value: production
+            - Name: AWS_REGION
+              Value: !Ref "AWS::Region"
+            - Name: DYNAMODB_TABLE
+              Value: watch-expense-py-table
+            - Name: S3_BUCKET_NAME
+              Value: watch-expense-py-bucket
+            - Name: JWT_AUDIENCE
+              Value: http://api.watchexpense.mohits.me
+            - Name: JWT_ISSUER
+              Value: http://api.watchexpense.mohits.me
+          Secrets:
+            - Name: JWT_SECRET
+              ValueFrom: !Sub "${WatchExpenseSecretsArn}:JWT_SECRET::"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref WatchExpenseLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: api
+
+
+
+  WatchExpenseECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - WatchExpenseListener
+    Properties:
+      Cluster: !Ref WatchExpenseECSCluster
+      ServiceName: watch-expense-py-service
+      TaskDefinition: !Ref WatchExpenseTaskDefinition
+      LaunchType: FARGATE
+      SchedulingStrategy: REPLICA
+      DesiredCount: !Ref DesiredTaskCount
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref WatchExpenseECSSecurityGroup
+          Subnets: !Ref Subnets
+      LoadBalancers:
+        - ContainerName: watch-expense-py-backend-container
+          ContainerPort: 8000
+          TargetGroupArn: !Ref WatchExpenseTargetGroup
+
+  WatchExpenseLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: watch-expense-alb
+      Subnets: !Ref Subnets
+      SecurityGroups:
+        - !Ref WatchExpenseALBSecurityGroup
+      Scheme: internet-facing
+      Type: application
+
+  WatchExpenseTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: watch-expense-target-group
+      Port: 8000
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+
+  WatchExpenseListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref WatchExpenseLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WatchExpenseTargetGroup
+
+  WatchExpenseECSScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: 3
+      MinCapacity: 0
+      ResourceId: !Sub
+        - service/${ClusterName}/${ServiceName}
+        - ClusterName: !Ref WatchExpenseECSCluster
+          ServiceName: !GetAtt WatchExpenseECSService.Name
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  WatchExpenseECSServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: WatchExpenseALBRequestScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref WatchExpenseECSScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 50
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ALBRequestCountPerTarget
+          ResourceLabel: !Sub ${WatchExpenseLoadBalancer.LoadBalancerFullName}/${WatchExpenseTargetGroup.TargetGroupFullName}
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 30
+  
+  WatchExpenseApiDNS:
+    Type: AWS::Route53::RecordSet
+    DependsOn: WatchExpenseLoadBalancer
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref ApiDomain
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt WatchExpenseLoadBalancer.DNSName
+        HostedZoneId: !GetAtt WatchExpenseLoadBalancer.CanonicalHostedZoneID
