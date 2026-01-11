@@ -24,7 +24,6 @@ app.include_router(image_router, prefix="/api")
 
 origins = [
     "https://watchexpense.mohits.me",
-    "http://localhost:4200",
 ]
 
 app.add_middleware(
@@ -34,6 +33,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get('/health')
+async def health_check():
+    return "OK"
 
 
 if __name__ == "__main__":
