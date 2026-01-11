@@ -46,6 +46,7 @@ async def handle_get_all_expenses(
 @expense_router.post(
     "/",
     response_model=CreateExpenseResponse,
+    status_code=201,
     dependencies=[Depends(required_roles([UserRole.Employee]))],
 )
 async def handle_create_expense(

@@ -47,6 +47,7 @@ async def handle_get_all_advances(
 @advance_router.post(
     "/",
     response_model=CreateAdvanceResponse,
+    status_code=201,
     dependencies=[Depends(required_roles([UserRole.Employee]))],
 )
 async def handle_create_advance(
