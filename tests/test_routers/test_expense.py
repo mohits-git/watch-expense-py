@@ -91,8 +91,6 @@ def sample_expense_summary():
 
 
 class TestGetAllExpenses:
-    """Tests for GET /expenses/ endpoint"""
-
     def test_get_all_expenses_as_employee(
         self,
         client: TestClient,
@@ -102,7 +100,6 @@ class TestGetAllExpenses:
         sample_expense,
         sample_approved_expense,
     ):
-        """Employee can get their own expenses"""
         expenses = [sample_expense, sample_approved_expense]
         mock_expense_service.get_all_expenses.return_value = (expenses, 2)
 
@@ -123,7 +120,6 @@ class TestGetAllExpenses:
         override_expense_service,
         sample_expense,
     ):
-        """Admin can get all expenses"""
         expenses = [sample_expense]
         mock_expense_service.get_all_expenses.return_value = (expenses, 1)
 
@@ -142,7 +138,6 @@ class TestGetAllExpenses:
         override_expense_service,
         sample_approved_expense,
     ):
-        """Admin can filter expenses by status"""
         expenses = [sample_approved_expense]
         mock_expense_service.get_all_expenses.return_value = (expenses, 1)
 
@@ -163,7 +158,6 @@ class TestGetAllExpenses:
         override_auth_employee,
         override_expense_service,
     ):
-        """Returns empty list when no expenses"""
         mock_expense_service.get_all_expenses.return_value = ([], 0)
 
         response = client.get("/api/expenses/")
@@ -180,15 +174,12 @@ class TestGetAllExpenses:
         override_expense_service,
         override_auth_unauthenticated,
     ):
-        """Unauthenticated users cannot access expenses"""
         response = client.get("/api/expenses/")
 
         assert response.status_code == 401
 
 
 class TestCreateExpense:
-    """Tests for POST /expenses/ endpoint"""
-
     def test_create_expense_success_as_employee(
         self,
         client: TestClient,
@@ -196,7 +187,6 @@ class TestCreateExpense:
         override_auth_employee,
         override_expense_service,
     ):
-        """Employee can create expense"""
         created_expense_id = "new-expense-id-123"
         mock_expense_service.create_expense.return_value = created_expense_id
 
@@ -228,7 +218,6 @@ class TestCreateExpense:
         override_auth_employee,
         override_expense_service,
     ):
-        """Employee can create expense with advance reconciliation"""
         created_expense_id = "new-expense-id-456"
         mock_expense_service.create_expense.return_value = created_expense_id
 
@@ -254,7 +243,6 @@ class TestCreateExpense:
         override_auth_admin,
         override_expense_service,
     ):
-        """Admin cannot create expense (employee only)"""
         request_data = {
             "amount": 5000.00,
             "description": "Business travel expenses",
@@ -275,7 +263,6 @@ class TestCreateExpense:
         override_auth_employee,
         override_expense_service,
     ):
-        """Invalid request data returns validation error"""
         request_data = {
             "amount": 5000.00,
             # Missing required fields
@@ -293,7 +280,6 @@ class TestCreateExpense:
         override_auth_employee,
         override_expense_service,
     ):
-        """Negative amount returns validation error"""
         request_data = {
             "amount": -1000.00,
             "description": "Invalid expense",
@@ -314,7 +300,6 @@ class TestCreateExpense:
         override_auth_employee,
         override_expense_service,
     ):
-        """Creating expense with invalid advance ID raises error"""
         mock_expense_service.create_expense.side_effect = AppException(
             AppErr.INVALID_EXPENSE_RECONCILE_ADVANCE
         )
@@ -334,8 +319,6 @@ class TestCreateExpense:
 
 
 class TestGetExpenseSummary:
-    """Tests for GET /expenses/summary endpoint"""
-
     def test_get_expense_summary_as_employee(
         self,
         client: TestClient,
@@ -344,7 +327,6 @@ class TestGetExpenseSummary:
         override_expense_service,
         sample_expense_summary,
     ):
-        """Employee can get their expense summary"""
         mock_expense_service.get_expense_summary.return_value = sample_expense_summary
 
         response = client.get("/api/expenses/summary")
@@ -365,7 +347,6 @@ class TestGetExpenseSummary:
         override_expense_service,
         sample_expense_summary,
     ):
-        """Admin can get overall expense summary"""
         mock_expense_service.get_expense_summary.return_value = sample_expense_summary
 
         response = client.get("/api/expenses/summary")
@@ -381,15 +362,12 @@ class TestGetExpenseSummary:
         override_expense_service,
         override_auth_unauthenticated,
     ):
-        """Unauthenticated users cannot access summary"""
         response = client.get("/api/expenses/summary")
 
         assert response.status_code == 401
 
 
 class TestGetExpenseById:
-    """Tests for GET /expenses/{expense_id} endpoint"""
-
     def test_get_expense_by_id_as_owner(
         self,
         client: TestClient,
@@ -398,7 +376,6 @@ class TestGetExpenseById:
         override_expense_service,
         sample_expense,
     ):
-        """Employee can get their own expense"""
         mock_expense_service.get_expense_by_id.return_value = sample_expense
 
         response = client.get(f"/api/expenses/{sample_expense.id}")
@@ -419,7 +396,6 @@ class TestGetExpenseById:
         override_expense_service,
         sample_expense,
     ):
-        """Admin can get any expense"""
         mock_expense_service.get_expense_by_id.return_value = sample_expense
 
         response = client.get(f"/api/expenses/{sample_expense.id}")
@@ -435,7 +411,6 @@ class TestGetExpenseById:
         override_auth_employee,
         override_expense_service,
     ):
-        """Get non-existent expense returns 404"""
         mock_expense_service.get_expense_by_id.side_effect = AppException(AppErr.NOT_FOUND)
 
         response = client.get("/api/expenses/non-existent-id")
@@ -449,7 +424,6 @@ class TestGetExpenseById:
         override_auth_employee,
         override_expense_service,
     ):
-        """Employee cannot access other user's expense"""
         mock_expense_service.get_expense_by_id.side_effect = AppException(AppErr.FORBIDDEN)
 
         response = client.get("/api/expenses/other-user-expense")
@@ -458,8 +432,6 @@ class TestGetExpenseById:
 
 
 class TestUpdateExpense:
-    """Tests for PUT /expenses/{expense_id} endpoint"""
-
     def test_update_expense_success_as_admin(
         self,
         client: TestClient,
@@ -468,7 +440,6 @@ class TestUpdateExpense:
         override_expense_service,
         sample_expense,
     ):
-        """Admin can update expense"""
         mock_expense_service.update_expense.return_value = None
 
         request_data = {
@@ -492,7 +463,6 @@ class TestUpdateExpense:
         override_expense_service,
         sample_expense,
     ):
-        """Employee cannot update expense (admin only)"""
         request_data = {
             "amount": 6000.00,
             "description": "Updated description",
@@ -513,7 +483,6 @@ class TestUpdateExpense:
         override_auth_admin,
         override_expense_service,
     ):
-        """Updating non-existent expense returns 404"""
         mock_expense_service.update_expense.side_effect = AppException(AppErr.NOT_FOUND)
 
         request_data = {
@@ -536,7 +505,6 @@ class TestUpdateExpense:
         override_expense_service,
         sample_expense,
     ):
-        """Invalid update data returns validation error"""
         request_data = {
             "amount": -1000.00,  # Invalid: negative amount
             "description": "Invalid update",
@@ -552,8 +520,6 @@ class TestUpdateExpense:
 
 
 class TestUpdateExpenseStatus:
-    """Tests for PATCH /expenses/{expense_id} endpoint"""
-
     def test_update_expense_status_to_approved_as_admin(
         self,
         client: TestClient,
@@ -561,7 +527,6 @@ class TestUpdateExpenseStatus:
         override_auth_admin,
         override_expense_service,
     ):
-        """Admin can approve expense"""
         mock_expense_service.update_expense_status.return_value = None
 
         request_data = {
@@ -580,7 +545,6 @@ class TestUpdateExpenseStatus:
         override_auth_admin,
         override_expense_service,
     ):
-        """Admin can reject expense"""
         mock_expense_service.update_expense_status.return_value = None
 
         request_data = {
@@ -599,7 +563,6 @@ class TestUpdateExpenseStatus:
         override_auth_employee,
         override_expense_service,
     ):
-        """Employee cannot update expense status (admin only)"""
         request_data = {
             "status": "APPROVED",
         }
@@ -616,7 +579,6 @@ class TestUpdateExpenseStatus:
         override_auth_admin,
         override_expense_service,
     ):
-        """Updating status of non-existent expense returns 404"""
         mock_expense_service.update_expense_status.side_effect = AppException(AppErr.NOT_FOUND)
 
         request_data = {
@@ -634,7 +596,6 @@ class TestUpdateExpenseStatus:
         override_auth_admin,
         override_expense_service,
     ):
-        """Invalid status returns validation error"""
         request_data = {
             "status": "INVALID_STATUS",
         }
