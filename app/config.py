@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 @dataclass
 class Config:
     environment: str = ""
+    aws_region: str = ""
     dynamodb_table: str = ""
     jwt_secret: str = ""
     jwt_issuer: str = ""
@@ -22,6 +23,7 @@ def load_config() -> Config:
         load_dotenv()
         _config = Config(
             environment=os.getenv("ENVIRONMENT") or "production",
+            aws_region=os.getenv("AWS_REGION") or "ap-south-1",
             dynamodb_table=os.getenv("DYNAMODB_TABLE") or "watch-expense-table",
             jwt_secret=os.getenv("JWT_SECRET") or "YsQz/FBocPkAhbtLO1AzGQ6lG/hn14zw4ebMp+NToik=",
             jwt_issuer=os.getenv("JWT_ISSUER") or "https://api.watchexpense.mohits.me",

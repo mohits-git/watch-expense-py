@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     config = load_config()
 
     # boto3 session
-    session = boto3.Session()
+    session = boto3.Session(region_name=config.aws_region)
 
     # ddb
     dynamodb_resource: DynamoDBServiceResource = session.resource("dynamodb")
