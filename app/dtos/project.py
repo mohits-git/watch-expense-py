@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
@@ -9,7 +10,7 @@ class ProjectDTO(BaseModel):
     id: str = Field(alias="id")
     name: str = Field(alias="name")
     description: str = Field(alias="description")
-    budget: DecimalAsFloat = Field(alias="budget")
+    budget: DecimalAsFloat = Field(alias="budget", ge=Decimal(0.0))
     start_date: int = Field(alias="startDate")
     end_date: int = Field(alias="endDate")
     department_id: str = Field(alias="departmentId")
@@ -28,7 +29,7 @@ class ProjectDTO(BaseModel):
 class CreateProjectRequest(BaseModel):
     name: str = Field(alias="name")
     description: str = Field(alias="description")
-    budget: DecimalAsFloat = Field(alias="budget")
+    budget: DecimalAsFloat = Field(alias="budget", ge=Decimal(0.0))
     start_date: int = Field(alias="startDate")
     end_date: int = Field(alias="endDate")
     department_id: str = Field(alias="departmentId")

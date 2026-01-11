@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
@@ -9,7 +10,7 @@ from app.models.expense import RequestStatus
 class AdvanceDTO(BaseModel):
     id: str = Field(alias="id")
     user_id: str = Field(alias="userId")
-    amount: DecimalAsFloat = Field(alias="amount")
+    amount: DecimalAsFloat = Field(alias="amount", ge=Decimal(0.0))
     description: str = Field(alias="description")
     purpose: str = Field(alias="purpose")
     status: RequestStatus = Field(alias="status")
@@ -33,7 +34,7 @@ class AdvanceDTO(BaseModel):
 
 
 class CreateAdvanceRequest(BaseModel):
-    amount: DecimalAsFloat
+    amount: DecimalAsFloat = Field(ge=Decimal(0.0))
     description: str
     purpose: str
 

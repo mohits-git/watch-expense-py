@@ -31,7 +31,7 @@ async def handle_get_all_departments(department_service: DepartmentServiceInstan
     )
 
 
-@department_router.post("/", response_model=CreateDepartmentResponse)
+@department_router.post("/", response_model=CreateDepartmentResponse, status_code=201)
 async def handle_create_department(
     create_department_request: CreateDepartmentRequest,
     department_service: DepartmentServiceInstance,

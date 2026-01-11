@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
@@ -7,7 +8,7 @@ from app.models.expense import RequestStatus
 
 
 class BillDTO(BaseModel):
-    amount: DecimalAsFloat = Field(alias="amount")
+    amount: DecimalAsFloat = Field(alias="amount", ge=Decimal(0.0))
     description: str = Field(alias="description")
     attachment_url: str = Field(alias="attachmentUrl", default="")
 
@@ -21,7 +22,7 @@ class BillDTO(BaseModel):
 class ExpenseDTO(BaseModel):
     id: str = Field(alias="id")
     user_id: str = Field(alias="userId")
-    amount: DecimalAsFloat = Field(alias="amount")
+    amount: DecimalAsFloat = Field(alias="amount", ge=Decimal(0.0))
     description: str = Field(alias="description")
     purpose: str = Field(alias="purpose")
     status: RequestStatus = Field(alias="status")
@@ -45,7 +46,7 @@ class ExpenseDTO(BaseModel):
 
 
 class CreateBillRequest(BaseModel):
-    amount: DecimalAsFloat
+    amount: DecimalAsFloat = Field(ge=Decimal(0.0))
     description: str
     attachment_url: str = Field(alias="attachmentUrl")
 
@@ -57,7 +58,7 @@ class CreateBillRequest(BaseModel):
 
 
 class CreateExpenseRequest(BaseModel):
-    amount: DecimalAsFloat
+    amount: DecimalAsFloat = Field(ge=Decimal(0.0))
     description: str
     purpose: str
     bills: list[BillDTO]
