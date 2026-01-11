@@ -1,5 +1,5 @@
 from typing import Annotated
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
 
 from app.dtos.response import BaseResponse
 from app.models.user import UserRole
@@ -9,7 +9,7 @@ class UserDTO(BaseModel):
     id: str = Field(alias="id")
     employee_id: str = Field(alias="employeeId")
     name: str = Field(alias="name")
-    email: str = Field(alias="email")
+    email: EmailStr = Field(alias="email")
     role: UserRole = Field(alias="role")
     project_id: str = Field(alias="projectId", default="")
     department_id: str = Field(alias="departmentId", default="")
@@ -38,7 +38,7 @@ class CreateUserRequest(BaseModel):
     employee_id: str = Field(alias="employeeId")
     name: str = Field(alias="name")
     password: str = Field(alias="password")
-    email: str = Field(alias="email")
+    email: EmailStr = Field(alias="email")
     role: UserRole = Field(alias="role")
     project_id: str = Field(alias="projectId", default="")
     department_id: str = Field(alias="departmentId", default="")

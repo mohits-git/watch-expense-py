@@ -1,5 +1,5 @@
 from typing import Annotated
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, EmailStr, Field
 from enum import Enum
 
 
@@ -13,7 +13,7 @@ class User(BaseModel):
     employee_id: str = Field(alias="EmployeeID")
     name: str = Field(alias="Name")
     password: str = Field(alias="PasswordHash")
-    email: str = Field(alias="Email")
+    email: EmailStr = Field(alias="Email")
     role: UserRole = Field(alias="Role")
     project_id: str = Field(alias="ProjectID", default="")
     department_id: str = Field(alias="DepartmentID", default="")
@@ -32,7 +32,7 @@ class User(BaseModel):
 class UserClaims(BaseModel):
     user_id: str = Field(alias="id")
     name: str
-    email: str
+    email: EmailStr
     role: UserRole
 
     # pydantic config
