@@ -36,4 +36,6 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.FAILED_TO_GET_DOWNLOAD_URL: (500, "Failed to get image download URL"),
     AppErr.IMAGE_NOT_FOUND: (404, "Image not found"),
     AppErr.UNAUTHORIZED_IMAGE_ACCESS: (401, "Unauthorized image access"),
+
+    AppErr.PASSWORD_TOO_LONG: (400, "Password is too long"),
 }
