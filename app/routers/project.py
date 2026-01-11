@@ -31,7 +31,7 @@ async def handle_get_all_projects(project_service: ProjectServiceInstance):
     )
 
 
-@project_router.post("/", response_model=CreateProjectResponse)
+@project_router.post("/", response_model=CreateProjectResponse, status_code=201)
 async def handle_create_project(
     create_project_request: CreateProjectRequest,
     project_service: ProjectServiceInstance,
