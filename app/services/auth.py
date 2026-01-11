@@ -37,7 +37,7 @@ class AuthService:
         user_claims = self._token_provider.validate_token(token)
         user = await self._user_repo.get(user_claims.user_id)
         if user is None:
-            raise Exception("Invalid user token")
+            raise AppException(AppErr.INVALID, "Invalid user token")
         user.password = ''
         return user
 

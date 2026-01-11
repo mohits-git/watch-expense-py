@@ -1,5 +1,7 @@
 import time
 import jwt
+from app.errors.app_exception import AppException
+from app.errors.codes import AppErr
 from app.models.user import UserClaims
 
 
@@ -27,11 +29,22 @@ class JWTTokenProvider:
                           self._jwt_secret, algorithm=self._algorithm)
 
     def validate_token(self, token: str) -> UserClaims:
-        claims = jwt.decode(
-            token, self._jwt_secret,
-            algorithms=[self._algorithm],
-            audience=self._audience,
-            issuer=self._issuer,
-        )
-        user_claims = UserClaims.model_validate(claims, extra="ignore")
-        return user_claims
+        try:
+            claims = jwt.decode(
+                token, self._jwt_secret,
+                algorithms=[self._algorithm],
+                audience=self._audience,
+                issuer=self._issuer,
+            )
+            user_claims = UserClaims.model_validate(claims, extra="ignore")
+            return user_claims
+        except jwt.ExpiredSignatureError as err:
+            raise AppException(AppErr.TOKEN_EXPIRED, cause=err)
+        except jwt.InvalidSignatureError as err:
+            raise AppException(AppErr.TOKEN_INVALID_SIGNATURE, cause=err)
+        except jwt.InvalidAudienceError as err:
+            raise AppException(AppErr.TOKEN_INVALID_AUDIENCE, cause=err)
+        except jwt.InvalidIssuerError as err:
+            raise AppException(AppErr.TOKEN_INVALID_ISSUER, cause=err)
+        except (jwt.DecodeError, jwt.InvalidTokenError) as err:
+            raise AppException(AppErr.TOKEN_DECODE_ERROR, cause=err)

@@ -3,6 +3,8 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Header, status
 
 from app.dependencies.token_provider import TokenProviderInstance
+from app.errors.app_exception import AppException
+from app.errors.codes import AppErr
 from app.models.user import UserClaims, UserRole
 
 
@@ -18,10 +20,8 @@ def auth_token(
         token = authorization.split(" ", 2)[1]
         claims = token_provider.validate_token(token)
         if not claims:
-            raise Exception("Unauthorized")
+            raise AppException(AppErr.UNAUTHORIZED)
         return token
-    except HTTPException as e:
-        raise e
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized"

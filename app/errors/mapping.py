@@ -38,4 +38,10 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.UNAUTHORIZED_IMAGE_ACCESS: (401, "Unauthorized image access"),
 
     AppErr.PASSWORD_TOO_LONG: (400, "Password is too long"),
+
+    AppErr.TOKEN_EXPIRED: (401, "Token has expired"),
+    AppErr.TOKEN_INVALID_SIGNATURE: (401, "Invalid token signature"),
+    AppErr.TOKEN_INVALID_AUDIENCE: (401, "Invalid token audience"),
+    AppErr.TOKEN_INVALID_ISSUER: (401, "Invalid token issuer"),
+    AppErr.TOKEN_DECODE_ERROR: (401, "Invalid Token"),
 }
