@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, Header, status
 
@@ -9,8 +9,9 @@ from app.models.user import UserClaims, UserRole
 
 
 def auth_token(
-    authorization: Annotated[str | None, Header(alias="Authorization")],
     token_provider: TokenProviderInstance,
+    authorization: Annotated[Optional[str],
+                             Header(alias="Authorization")] = None,
 ) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
