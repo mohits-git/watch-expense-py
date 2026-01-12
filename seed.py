@@ -7,7 +7,7 @@ from app.infra.bcrypt_password_hasher import BcryptPasswordHasher
 
 
 async def seed():
-    ddb_table_name = "watch-expense-table-py"
+    ddb_table_name = "watch-expense-py-table"
     session = boto3.Session(region_name="ap-south-1")
     resource = session.resource("dynamodb")
     table = resource.Table(ddb_table_name)
