@@ -19,20 +19,37 @@ class ProjectRepository:
                  table_name: str):
         self._table = ddb_table
         self._table_name = table_name
-        self._pk = "PROJECT"
-        self._sk_prefix = "DETAILS#"
-        self._lookup_sk_prefix = "DEPARTMENT#"
+        self._pk_prefix = "PROJECT"
+        self._sk_prefix = "DETAILS"
+        self._dep_pk_prefix = "DEPARTMENT"
+        self._dep_proj_sk_prefix = "PROJECT"
 
-    def _get_project_primary_key(self, dep_id: str, project_id: str) -> dict:
+    def _get_primary_key(self, *,
+                         project_id: str | None = None,
+                         created_at: int | None = None,
+                         ) -> dict:
+        pk_suffix = ""
+        sk_suffix = ""
+        if created_at:
+            sk_suffix = f"#{created_at}#{project_id or ""}"
+        elif project_id:
+            pk_suffix = f"#{project_id}"
         return {
-            "PK": self._pk,
-            "SK": f"{self._sk_prefix}{dep_id}#{project_id}",
+            "PK": f"{self._pk_prefix}{pk_suffix}",
+            "SK": f"{self._sk_prefix}{sk_suffix}",
         }
 
-    def _get_project_lookup_primary_key(self, project_id: str) -> dict:
+    def _get_departments_project_pk(self,
+                                    department_id: str,
+                                    *,
+                                    created_at: int | None = None,
+                                    project_id: str | None = None) -> dict:
+        sk_suffix = ""
+        if created_at:
+            sk_suffix = f"#{created_at}#{project_id or ""}"
         return {
-            "PK": self._pk,
-            "SK": f"{self._lookup_sk_prefix}{project_id}",
+            "PK": f"{self._dep_pk_prefix}#{department_id}",
+            "SK": f"{self._dep_proj_sk_prefix}#{sk_suffix}"
         }
 
     def _parse_project_item(self, item: dict) -> Project:
@@ -45,26 +62,22 @@ class ProjectRepository:
                 cause=err,
             )
 
-    async def _get_dep_id_by_project_id(self, project_id: str) -> str | None:
-        try:
-            primary_key = self._get_project_lookup_primary_key(project_id)
-            response = await asyncio.to_thread(lambda: self._table.get_item(
-                Key=primary_key))
-            if not response or "Item" not in response:
-                return None
-            return str(response["Item"]["DepartmentID"])
-        except ClientError as err:
-            raise utils.handle_dynamo_error(err, "Failed to get project data")
-
     async def save(self, project: Project) -> None:
         if not project.id:
             project.id = str(uuid.uuid4())
         if not project.created_at:
             project.created_at = int(time.time_ns()//1e6)
             project.updated_at = project.created_at
-        primary_key = self._get_project_primary_key(
-            project.department_id, project.id)
-        lookup_pk = self._get_project_lookup_primary_key(project.id)
+
+        primary_key = self._get_primary_key(project_id=project.id)
+        fetch_all_primary_key = self._get_primary_key(
+            created_at=project.created_at,
+            project_id=project.id)
+        dep_projects_primary_key = self._get_departments_project_pk(
+            project.department_id,
+            created_at=project.created_at,
+            project_id=project.id)
+        project_data = project.model_dump(by_alias=True)
 
         transact_items: list[TransactWriteItemTypeDef] = [
             {
@@ -72,19 +85,29 @@ class ProjectRepository:
                     "TableName": self._table_name,
                     "Item": {
                         **primary_key,
-                        **project.model_dump(by_alias=True),
+                        **project_data,
                     },
-                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+                    "ConditionExpression": "attribute_not_exists(PK)",
                 }
             },
             {
                 "Put": {
                     "TableName": self._table_name,
                     "Item": {
-                        **lookup_pk,
-                        "DepartmentID": project.department_id,
+                        **fetch_all_primary_key,
+                        **project_data,
                     },
-                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+                    "ConditionExpression": "attribute_not_exists(SK)"
+                }
+            },
+            {
+                "Put": {
+                    "TableName": self._table_name,
+                    "Item": {
+                        **dep_projects_primary_key,
+                        **project_data,
+                    },
+                    "ConditionExpression": "attribute_not_exists(SK)"
                 }
             }
         ]
@@ -99,12 +122,10 @@ class ProjectRepository:
 
     async def get(self, project_id: str) -> Project | None:
         try:
-            department_id = await self._get_dep_id_by_project_id(project_id)
-            if not department_id:
-                return None
-            primary_key = self._get_project_primary_key(
-                department_id, project_id)
-            response = await asyncio.to_thread(lambda: self._table.get_item(Key=primary_key))
+            primary_key = self._get_primary_key(
+                project_id=project_id)
+            response = await asyncio.to_thread(
+                lambda: self._table.get_item(Key=primary_key))
             if not response or "Item" not in response:
                 return None
             return self._parse_project_item(response["Item"])
@@ -113,9 +134,9 @@ class ProjectRepository:
 
     async def get_all(self) -> list[Project]:
         try:
+            fetch_all_primary_key = self._get_primary_key()
             query_input: QueryInputTableQueryTypeDef = {
-                "KeyConditionExpression": Key("PK").eq(
-                    self._pk) & Key("SK").begins_with(self._sk_prefix)
+                "KeyConditionExpression": Key("PK").eq(fetch_all_primary_key["PK"])
             }
             items = await utils.query_items(self._table, query_input)
             projects = [
@@ -130,50 +151,31 @@ class ProjectRepository:
         existing_project = await self.get(project.id)
         if existing_project is None:
             raise Exception(f"Project with project_id: {project.id} not found")
+
         prev_dep_id = existing_project.department_id
 
+        project.created_at = existing_project.created_at
         project.updated_at = int(time.time_ns() // 1e6)
 
-        if prev_dep_id == project.department_id:
-            # build update expr
-            exclude_fields = {'id', 'created_at'}
-            to_update = project.model_dump(
-                by_alias=True, exclude=exclude_fields)
-            update_expr, expr_names, expr_values = utils.build_update_expression(
-                to_update)
-            primary_key = self._get_project_primary_key(
-                prev_dep_id, project.id)
-            try:
-                await asyncio.to_thread(lambda: self._table.update_item(
-                    Key=primary_key,
-                    UpdateExpression=update_expr,
-                    ExpressionAttributeNames=expr_names,
-                    ExpressionAttributeValues=expr_values,
-                ))
-            except ClientError as err:
-                raise utils.handle_dynamo_error(
-                    err, "Failed to update project")
-            return
-
-        primary_key = self._get_project_primary_key(prev_dep_id, project.id)
-        new_primary_key = self._get_project_primary_key(
-            project.department_id, project.id)
-        lookup_pk = self._get_project_lookup_primary_key(project.id)
-        to_update = {"DepartmentID": project.department_id}
+        exclude_fields = {'id', 'created_at'}
+        to_update = project.model_dump(
+            by_alias=True, exclude=exclude_fields)
         update_expr, expr_names, expr_values = utils.build_update_expression(
             to_update)
-        project.created_at = existing_project.created_at
+        primary_key = self._get_primary_key(project_id=project.id)
+        fetch_all_primary_key = self._get_primary_key(
+            project_id=project.id,
+            created_at=existing_project.created_at)
+        dep_projects_pk = self._get_departments_project_pk(
+            project_id=project.id,
+            created_at=existing_project.created_at,
+            department_id=prev_dep_id)
+
         transact_items: list[TransactWriteItemTypeDef] = [
-            {
-                "Delete": {
-                    "TableName": self._table_name,
-                    "Key": primary_key,
-                }
-            },
             {
                 "Update": {
                     "TableName": self._table_name,
-                    "Key": lookup_pk,
+                    "Key": primary_key,
                     "UpdateExpression": update_expr,
                     "ExpressionAttributeNames": expr_names,
                     "ExpressionAttributeValues": expr_values,
@@ -181,16 +183,49 @@ class ProjectRepository:
                 }
             },
             {
-                "Put": {
+                "Update": {
                     "TableName": self._table_name,
-                    "Item": {
-                        **new_primary_key,
-                        **project.model_dump(by_alias=True)
-                    },
-                    "ConditionExpression": "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+                    "Key": fetch_all_primary_key,
+                    "UpdateExpression": update_expr,
+                    "ExpressionAttributeNames": expr_names,
+                    "ExpressionAttributeValues": expr_values,
+                    "ConditionExpression": "attribute_exists(PK) AND attribute_exists(SK)",
                 }
             }
         ]
+
+        if prev_dep_id != project.department_id:
+            new_dep_projects_pk = self._get_departments_project_pk(
+                project_id=project.id,
+                created_at=existing_project.created_at,
+                department_id=project.department_id,
+            )
+            transact_items.append({
+                "Delete": {
+                    "TableName": self._table_name,
+                    "Key": dep_projects_pk,
+                }
+            })
+            transact_items.append({
+                "Put": {
+                    "TableName": self._table_name,
+                    "Item": {
+                        **new_dep_projects_pk,
+                        **project.model_dump(by_alias=True)
+                    }
+                }
+            })
+        else:
+            transact_items.append({
+                "Update": {
+                    "TableName": self._table_name,
+                    "Key": dep_projects_pk,
+                    "UpdateExpression": update_expr,
+                    "ExpressionAttributeNames": expr_names,
+                    "ExpressionAttributeValues": expr_values,
+                    "ConditionExpression": "attribute_exists(PK) AND attribute_exists(SK)",
+                }
+            })
 
         try:
             await asyncio.to_thread(
