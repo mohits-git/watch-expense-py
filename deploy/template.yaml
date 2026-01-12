@@ -94,8 +94,7 @@ Resources:
               - 's3:GetObject'
               - 's3:DeleteObject'
             Resource:
-              - !Sub arn:aws:s3:::watch-expense-py-bucket/*
-              - !Sub arn:aws:s3:::watch-expense-py-bucket
+              - !Sub "arn:aws:s3:::watch-expense-py-bucket/*"
 
   SecretsAccessPolicy:
     Type: AWS::IAM::ManagedPolicy

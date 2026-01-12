@@ -11,6 +11,7 @@ from app.errors.mapping import ERROR_MAP
 async def app_exception_handler(request: Request, exc):
     http_status, default_msg = ERROR_MAP.get(
         exc.err_code, (500, "Unknown error"))
+    print("ERROR: ", exc.cause)
     return JSONResponse(
         status_code=http_status,
         content=ErrorResponse(

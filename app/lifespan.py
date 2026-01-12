@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     ddb_table = dynamodb_resource.Table(table_name)
 
     # s3
-    bucket_name = "watch-expense-bucket"
+    bucket_name = config.s3_bucket_name
     s3_client: S3Client = session.client("s3")
 
     # repos

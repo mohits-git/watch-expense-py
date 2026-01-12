@@ -24,10 +24,10 @@ def load_config() -> Config:
         _config = Config(
             environment=os.getenv("ENVIRONMENT") or "production",
             aws_region=os.getenv("AWS_REGION") or "ap-south-1",
-            dynamodb_table=os.getenv("DYNAMODB_TABLE") or "watch-expense-table",
+            dynamodb_table=os.getenv("DYNAMODB_TABLE") or "watch-expense-py-table",
             jwt_secret=os.getenv("JWT_SECRET") or "YsQz/FBocPkAhbtLO1AzGQ6lG/hn14zw4ebMp+NToik=",
             jwt_issuer=os.getenv("JWT_ISSUER") or "https://api.watchexpense.mohits.me",
             jwt_audience=os.getenv("JWT_AUDIENCE") or "https://api.watchexpense.mohits.me",
-            s3_bucket_name=os.getenv("S3_BUCKET_NAME") or "watch-expense-bucket",
+            s3_bucket_name=os.getenv("S3_BUCKET_NAME") or "watch-expense-py-bucket",
         )
     return _config
