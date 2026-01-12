@@ -175,7 +175,6 @@ Resources:
         - CapacityProvider: FARGATE
           Weight: 1
 
-
   WatchExpenseLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -231,8 +230,6 @@ Resources:
               awslogs-group: !Ref WatchExpenseLogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: api
-
-
 
   WatchExpenseECSService:
     Type: AWS::ECS::Service
@@ -315,7 +312,7 @@ Resources:
           ResourceLabel: !Sub ${WatchExpenseLoadBalancer.LoadBalancerFullName}/${WatchExpenseTargetGroup.TargetGroupFullName}
         ScaleInCooldown: 300
         ScaleOutCooldown: 30
-  
+
   WatchExpenseApiDNS:
     Type: AWS::Route53::RecordSet
     DependsOn: WatchExpenseLoadBalancer
