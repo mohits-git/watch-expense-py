@@ -12,3 +12,9 @@ wheels/
 .env
 .env.*
 !.env.example
+
+# test coverage report
+.coverage
+htmlcov/
+# cognitive test
+.complexipy_cache/
