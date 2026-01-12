@@ -25,6 +25,7 @@ class TestExpenseService:
     def mock_advance_repo(self):
         repo = MagicMock()
         repo.get = AsyncMock()
+        repo.update = AsyncMock()
         return repo
 
     @pytest.fixture
@@ -145,7 +146,9 @@ class TestExpenseService:
         assert result is not None
         assert expense.is_reconciled is True
         mock_advance_repo.get.assert_called_once_with(sample_advance.id)
-        mock_expense_repo.save.assert_called_once_with(expense, sample_advance.id)
+        mock_expense_repo.save.assert_called_once_with(expense)
+        sample_advance.reconciled_expense_id = expense.id
+        mock_advance_repo.update.assert_called_once_with(sample_advance)
 
     @pytest.mark.asyncio
     async def test_create_expense_advance_not_found(self, expense_service, employee_user, mock_advance_repo):

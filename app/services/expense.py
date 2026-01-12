@@ -42,7 +42,9 @@ class ExpenseService:
                 raise AppException(AppErr.INVALID_EXPENSE_RECONCILE_ADVANCE)
             if existing_advance.user_id != curr_user.user_id:
                 raise AppException(AppErr.EXPENSE_RECONCILE_PERMISSION_DENIED)
-            await self.expense_repo.save(expense, expense.advance_id)
+            existing_advance.reconciled_expense_id = expense.id
+            await asyncio.gather(self.expense_repo.save(expense),
+                                 self.advance_repo.update(existing_advance))
         else:
             await self.expense_repo.save(expense)
         return expense.id
