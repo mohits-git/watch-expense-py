@@ -4,10 +4,10 @@
   /* -----------------------------------------------------------
      USER
   ------------------------------------------------------------*/
-  /* Query: Get All Users (for admin) */
+  /* User's by id */
   {
-    "PK": "USER",
-    "SK": "PROFILE#createdAt#UserId",
+    "PK": "USER#UserId",
+    "SK": "PROFILE",
     "Type": "USER",
     "UserID": "user123",
     "EmployeeID": "employeeId",
@@ -20,21 +20,28 @@
     "CreatedAt": "2025-01-01T00:00:00Z",
     "UpdatedAt": "2025-01-01T00:00:00Z"
   },
-  
-  /* User index email - uuid lookup */
-  /* Query: Get userid - hashedpass by email (login) */
+
+  /* User by email */
   {
-    "PK": "USER",
-    "SK": "EMAIL#emailId"
-    "Type": "USER_EMAIL_INDEX",
+    "PK": "USER#emailId",
+    "SK": "PROFILE",
+    "Type": "USER",
     "UserID": "user123",
-    "Password": "hashedpassword"
+    "EmployeeID": "employeeId",
+    "Name": "John Doe",
+    "Email": "john@example.com",
+    "Role": "Employee",
+    "PasswordHash": "hashpassword",
+    "DepartmentID": "dept456",
+    "ProjectID": "proj789",
+    "CreatedAt": "2025-01-01T00:00:00Z",
+    "UpdatedAt": "2025-01-01T00:00:00Z"
   },
 
-  /* User's Profile */
+  /* Query: Get All Users (for admin) */
   {
-    "PK": "USER#UserId",
-    "SK": "PROFILE",
+    "PK": "USER",
+    "SK": "PROFILE#createdAt#UserId",
     "Type": "USER",
     "UserID": "user123",
     "EmployeeID": "employeeId",
@@ -76,7 +83,7 @@
     ],
     "CreatedAt": "timestamp",
     "UpdatedAt": "timestamp"
-  }
+  },
 
   /* User's Expenses */
   {
@@ -158,8 +165,8 @@
   /* User's Advances */
   {
     "PK": "USER#UserId",
-    "SK": "EXPENSE#createdAt#expenseId",
-    "Type": "EXPENSE",
+    "SK": "ADVANCE#createdAt#advanceId",
+    "Type": "ADVANCE",
     "AdvanceID": "uuid",
     "UserID": "uuid",
     "Amount": "decimal",
@@ -207,6 +214,7 @@
     "CreatedAt": "timestamp",
     "UpdatedAt": "timestamp"
   },
+
   /* Admin fetch all departments */
   {
     "PK": "DEPARTMENT",
@@ -217,6 +225,7 @@
     "CreatedAt": "timestamp",
     "UpdatedAt": "timestamp"
   },
+
   /* -----------------------------------------------------------
      PROJECTS
   ------------------------------------------------------------*/
@@ -234,10 +243,11 @@
     "CreatedAt": "timestamp",
     "UpdatedAt": "timestamp"
   }
+
   /* Admin get all project's */
   {
     "PK": "PROJECT",
-    "SK": "DETAILS#createdAt",
+    "SK": "DETAILS#createdAt#projectId",
     "ProjectID": "uuid",
     "Name": "project_name",
     "Description": "description",
@@ -248,10 +258,11 @@
     "CreatedAt": "timestamp",
     "UpdatedAt": "timestamp"
   }
+
   /* Get department's projects */
   {
-    "PK": "PROJECT",
-    "SK": "DEPARTMENT#DepID#ProjectID",
+    "PK": "DEPARTMENT#depId",
+    "SK": "PROJECT#createdAt#ProjectID",
     "ProjectID": "uuid",
     "Name": "project_name",
     "Description": "description",
@@ -262,6 +273,7 @@
     "CreatedAt": "timestamp",
     "UpdatedAt": "timestamp"
   }
+
   /* -----------------------------------------------------------
      IMAGE - USER METADATA
   ------------------------------------------------------------*/
