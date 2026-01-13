@@ -189,14 +189,11 @@ class TestAdvanceRepositoryGetAll:
         total_sum = await advance_repository.get_sum(non_existent_user_id)
         assert total_sum == 0.0
 
-    # NOTE: moto does not support complex filter expression (.size())
-    # get_reconciled_sum(user_id) uses filter expression with size()
-    # ignoring this test for now
-    # @pytest.mark.asyncio
-    # async def test_get_reconciled_sum(self, advance_repository, user_id, setup_advances):
-    #     # 0, 2, 4 -> 100 + 300 + 500 = 900
-    #     reconciled_sum = await advance_repository.get_reconciled_sum(user_id)
-    #     assert reconciled_sum == 900.0
+    @pytest.mark.asyncio
+    async def test_get_reconciled_sum(self, advance_repository, user_id, setup_advances):
+        # 0, 2, 4 -> 100 + 300 + 500 = 900
+        reconciled_sum = await advance_repository.get_reconciled_sum(user_id)
+        assert reconciled_sum == 900.0
 
     @pytest.mark.asyncio
     async def test_get_reconciled_sum_empty(self, advance_repository):
