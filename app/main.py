@@ -24,6 +24,7 @@ app.include_router(image_router, prefix="/api")
 
 origins = [
     "https://watchexpense.mohits.me",
+    "http://localhost:4200"
 ]
 
 app.add_middleware(

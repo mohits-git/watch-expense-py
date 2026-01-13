@@ -14,7 +14,7 @@ class Config:
     s3_bucket_name: str = ""
 
 
-_config = None
+_config: Config | None = None
 
 
 def load_config() -> Config:

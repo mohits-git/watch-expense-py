@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app import config
 from app.dtos.response import ErrorResponse
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
@@ -11,7 +12,8 @@ from app.errors.mapping import ERROR_MAP
 async def app_exception_handler(request: Request, exc):
     http_status, default_msg = ERROR_MAP.get(
         exc.err_code, (500, "Unknown error"))
-    print("ERROR: ", exc.cause)
+    if config._config and config._config.environment != "production":
+        print("ERROR: ", exc.cause)
     return JSONResponse(
         status_code=http_status,
         content=ErrorResponse(

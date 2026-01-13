@@ -288,7 +288,7 @@ class AdvanceRepository:
                 & Key("SK").begins_with(primary_key["SK"]),
                 "ProjectionExpression": "Amount",
                 "FilterExpression": Attr("ReconciledExpenseID").exists()
-                & Attr("ReconciledExpenseID").size().gt(0),
+                & Attr("ReconciledExpenseID").size().gte(1),
             }
 
             items = await utils.query_items(self._table, query_input)
