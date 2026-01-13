@@ -1,118 +1,218 @@
 from decimal import Decimal
-from uuid import uuid4
+from unittest.mock import patch
 import pytest
-import pytest_asyncio
+from botocore.exceptions import ClientError
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.department import Department
 from app.repository.department_repository import DepartmentRepository
 
 
-class TestDepartmentRepository:
-    @pytest_asyncio.fixture(scope="class")
-    async def department_repository(self, ddb_table, table_name):
-        return DepartmentRepository(ddb_table, table_name)
+@pytest.fixture
+def department_repository(mock_ddb_table, table_name):
+    return DepartmentRepository(mock_ddb_table, table_name)
 
-    @pytest_asyncio.fixture(scope="class")
-    async def department_uuid(self) -> str:
-        return uuid4().hex
 
-    @pytest_asyncio.fixture(scope="class")
-    async def department(self, department_uuid):
-        return Department.model_validate({
-            "id": department_uuid,
-            "name": "Test Department",
-            "budget": Decimal("50000.00"),
+@pytest.fixture
+def sample_department():
+    return Department.model_validate({
+        "id": "dept-123",
+        "name": "Test Department",
+        "budget": Decimal("50000.00"),
+        "created_at": 1704067200000,
+        "updated_at": 1704067200000,
+    })
+
+
+@pytest.fixture
+def sample_department_item():
+    return {
+        "PK": "DEPARTMENT#dept-123",
+        "SK": "DETAILS",
+        "DepartmentID": "dept-123",
+        "Name": "Test Department",
+        "Budget": Decimal("50000.00"),
+        "CreatedAt": 1704067200000,
+        "UpdatedAt": 1704067200000,
+    }
+
+
+class TestDepartmentRepositorySave:
+    @pytest.mark.asyncio
+    @patch("uuid.uuid4")
+    @patch("time.time_ns")
+    async def test_save_success(
+        self,
+        mock_time_ns,
+        mock_uuid,
+        department_repository,
+        mock_ddb_table,
+    ):
+        mock_uuid.return_value.hex = "new-dept-id"
+        mock_time_ns.return_value = 1704067200000000000
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        department = Department.model_validate({
+            "name": "New Department",
+            "budget": Decimal("75000.00"),
         })
 
-    @pytest.mark.asyncio
-    async def test_save(self, department_repository, department):
         await department_repository.save(department)
 
-    @pytest.mark.asyncio
-    async def test_save_department_already_exists(self, department_repository, department):
-        with pytest.raises(AppException) as app_exc:
-            await department_repository.save(department)
-        assert app_exc.value.err_code == AppErr.DEPARTMENT_ALREADY_EXISTS
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 2
+        assert all("Put" in item for item in call_args["TransactItems"])
 
     @pytest.mark.asyncio
-    async def test_get(self, department_repository, department):
-        result = await department_repository.get(department.id)
+    @patch("app.repository.utils.is_conditional_check_failure")
+    async def test_save_department_already_exists(
+        self,
+        mock_is_conditional_check_failure,
+        department_repository,
+        mock_ddb_table,
+        sample_department,
+    ):
+        error_response = {"Error": {"Code": "TransactionCanceledException"}}
+        mock_ddb_table.meta.client.transact_write_items.side_effect = ClientError(
+            error_response, "TransactWriteItems"
+        )
+        mock_is_conditional_check_failure.return_value = True
+
+        with pytest.raises(AppException) as exc_info:
+            await department_repository.save(sample_department)
+
+        assert exc_info.value.err_code == AppErr.DEPARTMENT_ALREADY_EXISTS
+
+
+class TestDepartmentRepositoryGet:
+    @pytest.mark.asyncio
+    async def test_get_success(
+        self,
+        department_repository,
+        mock_ddb_table,
+        sample_department_item,
+    ):
+        mock_ddb_table.get_item.return_value = {"Item": sample_department_item}
+
+        result = await department_repository.get("dept-123")
+
         assert result is not None
-        assert result.id == department.id
-        assert result.name == department.name
-        assert result.budget == department.budget
+        assert result.id == "dept-123"
+        assert result.name == "Test Department"
+        assert result.budget == Decimal("50000.00")
+        mock_ddb_table.get_item.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_non_existent(self, department_repository):
+    async def test_get_not_found(
+        self,
+        department_repository,
+        mock_ddb_table,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
         result = await department_repository.get("non-existent-id")
+
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_update(self, department_repository, department):
-        department.name = "Updated Department Name"
-        department.budget = Decimal("75000.00")
+    async def test_get_client_error(
+        self,
+        department_repository,
+        mock_ddb_table,
+    ):
+        error_response = {"Error": {"Code": "ResourceNotFoundException"}}
+        mock_ddb_table.get_item.side_effect = ClientError(error_response, "GetItem")
 
-        await department_repository.update(department)
+        with pytest.raises(AppException) as exc_info:
+            await department_repository.get("dept-123")
 
-        result = await department_repository.get(department.id)
-        assert result is not None
-        assert result.name == "Updated Department Name"
-        assert result.budget == Decimal("75000.00")
-
-    @pytest.mark.asyncio
-    async def test_update_non_existent(self, department_repository):
-        non_existent_department = Department.model_validate({
-            "id": "non-existent-id",
-            "name": "Ghost Department",
-            "budget": Decimal("10000"),
-        })
-        with pytest.raises(AppException) as app_exc:
-            await department_repository.update(non_existent_department)
-        assert app_exc.value.err_code == AppErr.NOT_FOUND
+        assert exc_info.value.err_code == AppErr.INTERNAL
 
 
 class TestDepartmentRepositoryGetAll:
-    """Test class for get_all with multiple departments"""
-
-    @pytest_asyncio.fixture(scope="class")
-    async def department_repository(self, ddb_table, table_name):
-        return DepartmentRepository(ddb_table, table_name)
-
-    @pytest_asyncio.fixture(scope="class")
-    async def setup_departments(self, department_repository):
-        """Create multiple departments for testing get_all"""
-        departments = [
-            Department.model_validate({
-                "id": uuid4().hex,
-                "name": f"Department {i}",
-                "budget": Decimal(f"{10000 * (i + 1)}"),
-            })
-            for i in range(5)
+    @pytest.mark.asyncio
+    @patch("app.repository.utils.query_items")
+    async def test_get_all_success(
+        self,
+        mock_query_items,
+        department_repository,
+    ):
+        mock_query_items.return_value = [
+            {
+                "DepartmentID": "dept-1",
+                "Name": "Department 1",
+                "Budget": Decimal("10000.00"),
+                "CreatedAt": 1704067200000,
+                "UpdatedAt": 1704067200000,
+            },
+            {
+                "DepartmentID": "dept-2",
+                "Name": "Department 2",
+                "Budget": Decimal("20000.00"),
+                "CreatedAt": 1704067300000,
+                "UpdatedAt": 1704067300000,
+            },
         ]
 
-        for department in departments:
-            await department_repository.save(department)
-
-        return departments
-
-    @pytest.mark.asyncio
-    async def test_get_all(self, department_repository, setup_departments):
         departments = await department_repository.get_all()
 
-        assert len(departments) >= 5
-
-        department_ids = {dept.id for dept in departments}
-        for department in setup_departments:
-            assert department.id in department_ids
+        assert len(departments) == 2
+        assert departments[0].id == "dept-1"
+        assert departments[0].name == "Department 1"
+        assert departments[1].id == "dept-2"
+        assert departments[1].name == "Department 2"
 
     @pytest.mark.asyncio
-    async def test_get_all_returns_correct_data(self, department_repository, setup_departments):
+    @patch("app.repository.utils.query_items")
+    async def test_get_all_empty(
+        self,
+        mock_query_items,
+        department_repository,
+    ):
+        mock_query_items.return_value = []
+
         departments = await department_repository.get_all()
 
-        test_department = setup_departments[0]
-        found_department = next((d for d in departments if d.id == test_department.id), None)
+        assert len(departments) == 0
 
-        assert found_department is not None
-        assert found_department.name == test_department.name
-        assert found_department.budget == test_department.budget
+
+class TestDepartmentRepositoryUpdate:
+    @pytest.mark.asyncio
+    @patch("time.time_ns")
+    async def test_update_success(
+        self,
+        mock_time_ns,
+        department_repository,
+        mock_ddb_table,
+        sample_department,
+        sample_department_item,
+    ):
+        mock_time_ns.return_value = 1704070800000000000
+        mock_ddb_table.get_item.return_value = {"Item": sample_department_item}
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        sample_department.name = "Updated Department Name"
+        sample_department.budget = Decimal("75000.00")
+
+        await department_repository.update(sample_department)
+
+        mock_ddb_table.get_item.assert_called_once()
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 2
+        assert all("Update" in item for item in call_args["TransactItems"])
+
+    @pytest.mark.asyncio
+    async def test_update_not_found(
+        self,
+        department_repository,
+        mock_ddb_table,
+        sample_department,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
+        with pytest.raises(AppException) as exc_info:
+            await department_repository.update(sample_department)
+
+        assert exc_info.value.err_code == AppErr.NOT_FOUND

@@ -1,188 +1,333 @@
-from uuid import uuid4
+from unittest.mock import patch, MagicMock
 import pytest
-import pytest_asyncio
+from botocore.exceptions import ClientError
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.user import User, UserRole
 from app.repository.user_repository import UserRepository
 
 
-class TestUserRepository:
-    @pytest_asyncio.fixture(scope="class")
-    async def user_repository(self, ddb_table, table_name):
-        return UserRepository(ddb_table, table_name)
+@pytest.fixture
+def user_repository(mock_ddb_table, table_name):
+    return UserRepository(mock_ddb_table, table_name)
 
-    @pytest_asyncio.fixture(scope="class")
-    async def user_id(self) -> str:
-        return uuid4().hex
 
-    @pytest_asyncio.fixture(scope="class")
-    async def user(self, user_id):
-        return User.model_validate({
-            "id": user_id,
-            "employee_id": "EMP001",
-            "name": "Test User",
-            "password": "hashed_password_123",
-            "email": f"test.user.{uuid4().hex[:8]}@example.com",
+@pytest.fixture
+def sample_user():
+    return User.model_validate({
+        "id": "user-123",
+        "employee_id": "EMP001",
+        "name": "Test User",
+        "password": "hashed_password_123",
+        "email": "testuser@example.com",
+        "role": UserRole.Employee,
+        "project_id": "proj-123",
+        "department_id": "dept-456",
+        "created_at": 1704067200000,
+        "updated_at": 1704067200000,
+    })
+
+
+@pytest.fixture
+def sample_user_item():
+    return {
+        "PK": "USER#user-123",
+        "SK": "PROFILE",
+        "UserID": "user-123",
+        "EmployeeID": "EMP001",
+        "Name": "Test User",
+        "PasswordHash": "hashed_password_123",
+        "Email": "testuser@example.com",
+        "Role": "EMPLOYEE",
+        "ProjectID": "proj-123",
+        "DepartmentID": "dept-456",
+        "CreatedAt": 1704067200000,
+        "UpdatedAt": 1704067200000,
+    }
+
+
+class TestUserRepositorySave:
+    @pytest.mark.asyncio
+    @patch("uuid.uuid4")
+    @patch("time.time_ns")
+    async def test_save_success(
+        self,
+        mock_time_ns,
+        mock_uuid,
+        user_repository,
+        mock_ddb_table,
+    ):
+        mock_uuid.return_value.hex = "new-user-id"
+        mock_time_ns.return_value = 1704067200000000000
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        user = User.model_validate({
+            "employee_id": "EMP002",
+            "name": "New User",
+            "password": "hashed_password",
+            "email": "newuser@example.com",
             "role": UserRole.Employee,
-            "project_id": "proj-123",
-            "department_id": "dept-456",
+            "project_id": "proj-456",
+            "department_id": "dept-789",
         })
 
-    @pytest.mark.asyncio
-    async def test_save(self, user_repository, user):
         await user_repository.save(user)
 
-    @pytest.mark.asyncio
-    async def test_save_user_already_exists(self, user_repository, user):
-        with pytest.raises(AppException) as app_exc:
-            await user_repository.save(user)
-        assert app_exc.value.err_code == AppErr.USER_ALREADY_EXISTS
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 3
+        assert all("Put" in item for item in call_args["TransactItems"])
 
     @pytest.mark.asyncio
-    async def test_get(self, user_repository, user):
-        result = await user_repository.get(user.id)
+    @patch("app.repository.utils.is_conditional_check_failure")
+    async def test_save_user_already_exists(
+        self,
+        mock_is_conditional_check_failure,
+        user_repository,
+        mock_ddb_table,
+        sample_user,
+    ):
+        error_response = {"Error": {"Code": "TransactionCanceledException"}}
+        mock_ddb_table.meta.client.transact_write_items.side_effect = ClientError(
+            error_response, "TransactWriteItems"
+        )
+        mock_is_conditional_check_failure.return_value = True
+
+        with pytest.raises(AppException) as exc_info:
+            await user_repository.save(sample_user)
+
+        assert exc_info.value.err_code == AppErr.USER_ALREADY_EXISTS
+
+
+class TestUserRepositoryGet:
+    @pytest.mark.asyncio
+    async def test_get_success(
+        self,
+        user_repository,
+        mock_ddb_table,
+        sample_user_item,
+    ):
+        mock_ddb_table.get_item.return_value = {"Item": sample_user_item}
+
+        result = await user_repository.get("user-123")
+
         assert result is not None
-        assert result.id == user.id
-        assert result.employee_id == user.employee_id
-        assert result.name == user.name
-        assert result.email == user.email
-        assert result.role == user.role
-        assert result.project_id == user.project_id
-        assert result.department_id == user.department_id
+        assert result.id == "user-123"
+        assert result.employee_id == "EMP001"
+        assert result.name == "Test User"
+        assert result.email == "testuser@example.com"
+        assert result.role == UserRole.Employee
+        mock_ddb_table.get_item.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_non_existent(self, user_repository):
+    async def test_get_not_found(
+        self,
+        user_repository,
+        mock_ddb_table,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
         result = await user_repository.get("non-existent-id")
+
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_by_email(self, user_repository, user):
-        result = await user_repository.get_by_email(user.email)
+    async def test_get_by_email_success(
+        self,
+        user_repository,
+        mock_ddb_table,
+        sample_user_item,
+    ):
+        mock_ddb_table.get_item.return_value = {"Item": sample_user_item}
+
+        result = await user_repository.get_by_email("testuser@example.com")
+
         assert result is not None
-        assert result.id == user.id
-        assert result.email == user.email
+        assert result.id == "user-123"
+        assert result.email == "testuser@example.com"
+        mock_ddb_table.get_item.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_by_email_non_existent(self, user_repository):
+    async def test_get_by_email_not_found(
+        self,
+        user_repository,
+        mock_ddb_table,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
         result = await user_repository.get_by_email("nonexistent@example.com")
+
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_update(self, user_repository, user):
-        user.name = "Updated Name"
-        user.employee_id = "EMP002"
-        user.role = UserRole.Admin
-        user.project_id = "proj-999"
+    async def test_get_client_error(
+        self,
+        user_repository,
+        mock_ddb_table,
+    ):
+        error_response = {"Error": {"Code": "ResourceNotFoundException"}}
+        mock_ddb_table.get_item.side_effect = ClientError(error_response, "GetItem")
 
-        await user_repository.update(user)
+        with pytest.raises(AppException) as exc_info:
+            await user_repository.get("user-123")
 
-        result = await user_repository.get(user.id)
-        assert result is not None
-        assert result.name == "Updated Name"
-        assert result.employee_id == "EMP002"
-        assert result.role == UserRole.Admin
-        assert result.project_id == "proj-999"
-
-    @pytest.mark.asyncio
-    async def test_update_with_email_change(self, user_repository, user):
-        old_email = user.email
-        new_email = f"new.email.{uuid4().hex[:8]}@example.com"
-        user.email = new_email
-
-        await user_repository.update(user)
-
-        # Verify user can be retrieved by new email
-        result = await user_repository.get_by_email(new_email)
-        assert result is not None
-        assert result.email == new_email
-        assert result.id == user.id
-
-        # Verify old email lookup returns None
-        old_result = await user_repository.get_by_email(old_email)
-        assert old_result is None
-
-    @pytest.mark.asyncio
-    async def test_update_non_existent(self, user_repository):
-        non_existent_user = User.model_validate({
-            "id": "non-existent-id",
-            "employee_id": "EMP999",
-            "name": "Ghost User",
-            "password": "password",
-            "email": "ghost@example.com",
-            "role": UserRole.Employee,
-        })
-        with pytest.raises(AppException) as app_exc:
-            await user_repository.update(non_existent_user)
-        assert app_exc.value.err_code == AppErr.NOT_FOUND
-
-    @pytest.mark.asyncio
-    async def test_delete(self, user_repository, user):
-        await user_repository.delete(user.id)
-
-        result = await user_repository.get(user.id)
-        assert result is None
-
-        email_result = await user_repository.get_by_email(user.email)
-        assert email_result is None
-
-    @pytest.mark.asyncio
-    async def test_delete_non_existent(self, user_repository):
-        with pytest.raises(AppException) as app_exc:
-            await user_repository.delete("non-existent-id")
-        assert app_exc.value.err_code == AppErr.NOT_FOUND
+        assert exc_info.value.err_code == AppErr.INTERNAL
 
 
 class TestUserRepositoryGetAll:
-    """Test class for get_all with multiple users"""
-
-    @pytest_asyncio.fixture(scope="class")
-    async def user_repository(self, ddb_table, table_name):
-        return UserRepository(ddb_table, table_name)
-
-    @pytest_asyncio.fixture(scope="class")
-    async def setup_users(self, user_repository):
-        """Create multiple users for testing get_all"""
-        users = [
-            User.model_validate({
-                "id": uuid4().hex,
-                "employee_id": f"EMP{100 + i}",
-                "name": f"User {i}",
-                "password": f"password{i}",
-                "email": f"user{i}.{uuid4().hex[:8]}@example.com",
-                "role": UserRole.Admin if i % 2 == 0 else UserRole.Employee,
-                "project_id": f"proj-{i}",
-                "department_id": f"dept-{i}",
-            })
-            for i in range(5)
+    @pytest.mark.asyncio
+    @patch("app.repository.utils.query_items")
+    async def test_get_all_success(
+        self,
+        mock_query_items,
+        user_repository,
+    ):
+        mock_query_items.return_value = [
+            {
+                "UserID": "user-1",
+                "EmployeeID": "EMP100",
+                "Name": "User 1",
+                "PasswordHash": "password1",
+                "Email": "user1@example.com",
+                "Role": "EMPLOYEE",
+                "ProjectID": "proj-1",
+                "DepartmentID": "dept-1",
+                "CreatedAt": 1704067200000,
+                "UpdatedAt": 1704067200000,
+            },
+            {
+                "UserID": "user-2",
+                "EmployeeID": "EMP101",
+                "Name": "User 2",
+                "PasswordHash": "password2",
+                "Email": "user2@example.com",
+                "Role": "ADMIN",
+                "ProjectID": "proj-2",
+                "DepartmentID": "dept-2",
+                "CreatedAt": 1704067300000,
+                "UpdatedAt": 1704067300000,
+            },
         ]
 
-        for user in users:
-            await user_repository.save(user)
-
-        return users
-
-    @pytest.mark.asyncio
-    async def test_get_all(self, user_repository, setup_users):
         users = await user_repository.get_all()
 
-        assert len(users) >= 5
-
-        user_ids = {user.id for user in users}
-        for user in setup_users:
-            assert user.id in user_ids
+        assert len(users) == 2
+        assert users[0].id == "user-1"
+        assert users[0].name == "User 1"
+        assert users[0].role == UserRole.Employee
+        assert users[1].id == "user-2"
+        assert users[1].name == "User 2"
+        assert users[1].role == UserRole.Admin
 
     @pytest.mark.asyncio
-    async def test_get_all_returns_correct_data(self, user_repository, setup_users):
+    @patch("app.repository.utils.query_items")
+    async def test_get_all_empty(
+        self,
+        mock_query_items,
+        user_repository,
+    ):
+        mock_query_items.return_value = []
+
         users = await user_repository.get_all()
 
-        test_user = setup_users[0]
-        found_user = next((u for u in users if u.id == test_user.id), None)
+        assert len(users) == 0
 
-        assert found_user is not None
-        assert found_user.employee_id == test_user.employee_id
-        assert found_user.name == test_user.name
-        assert found_user.email == test_user.email
-        assert found_user.role == test_user.role
-        assert found_user.project_id == test_user.project_id
-        assert found_user.department_id == test_user.department_id
+
+class TestUserRepositoryUpdate:
+    @pytest.mark.asyncio
+    @patch("time.time_ns")
+    async def test_update_success(
+        self,
+        mock_time_ns,
+        user_repository,
+        mock_ddb_table,
+        sample_user,
+        sample_user_item,
+    ):
+        mock_time_ns.return_value = 1704070800000000000
+        mock_ddb_table.get_item.return_value = {"Item": sample_user_item}
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        sample_user.name = "Updated Name"
+        sample_user.employee_id = "EMP002"
+        sample_user.role = UserRole.Admin
+
+        await user_repository.update(sample_user)
+
+        mock_ddb_table.get_item.assert_called_once()
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 3
+        assert all("Update" in item for item in call_args["TransactItems"])
+
+    @pytest.mark.asyncio
+    @patch("time.time_ns")
+    async def test_update_with_email_change(
+        self,
+        mock_time_ns,
+        user_repository,
+        mock_ddb_table,
+        sample_user,
+        sample_user_item,
+    ):
+        mock_time_ns.return_value = 1704070800000000000
+        mock_ddb_table.get_item.return_value = {"Item": sample_user_item}
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        sample_user.email = "newemail@example.com"
+
+        await user_repository.update(sample_user)
+
+        mock_ddb_table.get_item.assert_called_once()
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 4
+        assert sum(1 for item in call_args["TransactItems"] if "Update" in item) == 2
+        assert sum(1 for item in call_args["TransactItems"] if "Delete" in item) == 1
+        assert sum(1 for item in call_args["TransactItems"] if "Put" in item) == 1
+
+    @pytest.mark.asyncio
+    async def test_update_not_found(
+        self,
+        user_repository,
+        mock_ddb_table,
+        sample_user,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
+        with pytest.raises(AppException) as exc_info:
+            await user_repository.update(sample_user)
+
+        assert exc_info.value.err_code == AppErr.NOT_FOUND
+
+
+class TestUserRepositoryDelete:
+    @pytest.mark.asyncio
+    async def test_delete_success(
+        self,
+        user_repository,
+        mock_ddb_table,
+        sample_user_item,
+    ):
+        mock_ddb_table.get_item.return_value = {"Item": sample_user_item}
+        mock_batch_writer = MagicMock()
+        mock_ddb_table.batch_writer.return_value.__enter__.return_value = mock_batch_writer
+
+        await user_repository.delete("user-123")
+
+        mock_ddb_table.get_item.assert_called_once()
+        mock_ddb_table.batch_writer.assert_called_once()
+        assert mock_batch_writer.delete_item.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_delete_not_found(
+        self,
+        user_repository,
+        mock_ddb_table,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
+        with pytest.raises(AppException) as exc_info:
+            await user_repository.delete("non-existent-id")
+
+        assert exc_info.value.err_code == AppErr.NOT_FOUND

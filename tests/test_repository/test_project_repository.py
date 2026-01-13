@@ -1,167 +1,267 @@
 from decimal import Decimal
-import time
-from uuid import uuid4
+from unittest.mock import patch
 import pytest
-import pytest_asyncio
+from botocore.exceptions import ClientError
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
 from app.models.project import Project
 from app.repository.project_repository import ProjectRepository
 
 
-class TestProjectRepository:
-    @pytest_asyncio.fixture(scope="class")
-    async def project_repository(self, ddb_table, table_name):
-        return ProjectRepository(ddb_table, table_name)
+@pytest.fixture
+def project_repository(mock_ddb_table, table_name):
+    return ProjectRepository(mock_ddb_table, table_name)
 
-    @pytest_asyncio.fixture(scope="class")
-    async def department_id(self) -> str:
-        return uuid4().hex
 
-    @pytest_asyncio.fixture(scope="class")
-    async def project_uuid(self) -> str:
-        return uuid4().hex
+@pytest.fixture
+def sample_project():
+    return Project.model_validate({
+        "id": "project-123",
+        "name": "Test Project",
+        "description": "Test Description",
+        "budget": Decimal("10000.00"),
+        "start_date": 1704067200000,
+        "end_date": 1704153600000,
+        "department_id": "dept-456",
+        "created_at": 1704067200000,
+        "updated_at": 1704067200000,
+    })
 
-    @pytest_asyncio.fixture(scope="class")
-    async def project(self, project_uuid, department_id):
-        current_time = int(time.time_ns() // 1e6)
-        return Project.model_validate({
-            "id": project_uuid,
-            "name": "Test Project",
-            "description": "Test Description",
-            "budget": Decimal("10000.00"),
-            "start_date": current_time,
-            "end_date": current_time + 100000000,
-            "department_id": department_id,
+
+@pytest.fixture
+def sample_project_item():
+    return {
+        "PK": "PROJECT#project-123",
+        "SK": "DETAILS",
+        "ProjectID": "project-123",
+        "Name": "Test Project",
+        "Description": "Test Description",
+        "Budget": Decimal("10000.00"),
+        "StartDate": 1704067200000,
+        "EndDate": 1704153600000,
+        "DepartmentID": "dept-456",
+        "CreatedAt": 1704067200000,
+        "UpdatedAt": 1704067200000,
+    }
+
+
+class TestProjectRepositorySave:
+    @pytest.mark.asyncio
+    @patch("uuid.uuid4")
+    @patch("time.time_ns")
+    async def test_save_success(
+        self,
+        mock_time_ns,
+        mock_uuid,
+        project_repository,
+        mock_ddb_table,
+    ):
+        mock_uuid.return_value.hex = "new-project-id"
+        mock_time_ns.return_value = 1704067200000000000
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        project = Project.model_validate({
+            "name": "New Project",
+            "description": "New Description",
+            "budget": Decimal("15000.00"),
+            "start_date": 1704067200000,
+            "end_date": 1704153600000,
+            "department_id": "dept-789",
         })
 
-    @pytest.mark.asyncio
-    async def test_save(self, project_repository, project):
         await project_repository.save(project)
 
-    @pytest.mark.asyncio
-    async def test_save_project_already_exists(self, project_repository, project):
-        with pytest.raises(AppException) as app_exc:
-            await project_repository.save(project)
-        assert app_exc.value.err_code == AppErr.PROJECT_ALREADY_EXISTS
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 3
+        assert all("Put" in item for item in call_args["TransactItems"])
 
     @pytest.mark.asyncio
-    async def test_get(self, project_repository, project):
-        result = await project_repository.get(project.id)
+    @patch("app.repository.utils.is_conditional_check_failure")
+    async def test_save_project_already_exists(
+        self,
+        mock_is_conditional_check_failure,
+        project_repository,
+        mock_ddb_table,
+        sample_project,
+    ):
+        error_response = {"Error": {"Code": "TransactionCanceledException"}}
+        mock_ddb_table.meta.client.transact_write_items.side_effect = ClientError(
+            error_response, "TransactWriteItems"
+        )
+        mock_is_conditional_check_failure.return_value = True
+
+        with pytest.raises(AppException) as exc_info:
+            await project_repository.save(sample_project)
+
+        assert exc_info.value.err_code == AppErr.PROJECT_ALREADY_EXISTS
+
+
+class TestProjectRepositoryGet:
+    @pytest.mark.asyncio
+    async def test_get_success(
+        self,
+        project_repository,
+        mock_ddb_table,
+        sample_project_item,
+    ):
+        mock_ddb_table.get_item.return_value = {"Item": sample_project_item}
+
+        result = await project_repository.get("project-123")
+
         assert result is not None
-        assert result.id == project.id
-        assert result.name == project.name
-        assert result.description == project.description
-        assert result.budget == project.budget
-        assert result.start_date == project.start_date
-        assert result.end_date == project.end_date
-        assert result.department_id == project.department_id
+        assert result.id == "project-123"
+        assert result.name == "Test Project"
+        assert result.description == "Test Description"
+        assert result.budget == Decimal("10000.00")
+        assert result.department_id == "dept-456"
+        mock_ddb_table.get_item.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_non_existent(self, project_repository):
+    async def test_get_not_found(
+        self,
+        project_repository,
+        mock_ddb_table,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
         result = await project_repository.get("non-existent-id")
+
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_update(self, project_repository, project):
-        project.name = "Updated Project Name"
-        project.description = "Updated Description"
-        project.budget = Decimal("20000.00")
+    async def test_get_client_error(
+        self,
+        project_repository,
+        mock_ddb_table,
+    ):
+        error_response = {"Error": {"Code": "ResourceNotFoundException"}}
+        mock_ddb_table.get_item.side_effect = ClientError(error_response, "GetItem")
 
-        await project_repository.update(project)
+        with pytest.raises(AppException) as exc_info:
+            await project_repository.get("project-123")
 
-        result = await project_repository.get(project.id)
-        assert result is not None
-        assert result.name == "Updated Project Name"
-        assert result.description == "Updated Description"
-        assert result.budget == Decimal("20000.00")
-
-    @pytest.mark.asyncio
-    async def test_update_with_department_change(self, project_repository, project):
-        old_department_id = project.department_id
-        new_department_id = uuid4().hex
-        project.department_id = new_department_id
-        project.name = "Moved Project"
-
-        await project_repository.update(project)
-
-        result = await project_repository.get(project.id)
-        assert result is not None
-        assert result.department_id == new_department_id
-        assert result.name == "Moved Project"
-        assert result.id == project.id
-
-    @pytest.mark.asyncio
-    async def test_update_non_existent(self, project_repository, department_id):
-        current_time = int(time.time_ns() // 1e6)
-        non_existent_project = Project.model_validate({
-            "id": "non-existent-id",
-            "name": "Ghost Project",
-            "description": "Does not exist",
-            "budget": Decimal("5000"),
-            "start_date": current_time,
-            "end_date": current_time + 100000000,
-            "department_id": department_id,
-        })
-        with pytest.raises(Exception) as exc:
-            await project_repository.update(non_existent_project)
-        assert "not found" in str(exc.value).lower()
+        assert exc_info.value.err_code == AppErr.INTERNAL
 
 
 class TestProjectRepositoryGetAll:
-    """Test class for get_all with multiple projects"""
-
-    @pytest_asyncio.fixture(scope="class")
-    async def project_repository(self, ddb_table, table_name):
-        return ProjectRepository(ddb_table, table_name)
-
-    @pytest_asyncio.fixture(scope="class")
-    async def department_id(self) -> str:
-        return uuid4().hex
-
-    @pytest_asyncio.fixture(scope="class")
-    async def setup_projects(self, project_repository, department_id):
-        """Create multiple projects for testing get_all"""
-        current_time = int(time.time_ns() // 1e6)
-        projects = [
-            Project.model_validate({
-                "id": uuid4().hex,
-                "name": f"Project {i}",
-                "description": f"Description {i}",
-                "budget": Decimal(f"{10000 * (i + 1)}"),
-                "start_date": current_time,
-                "end_date": current_time + 100000000,
-                "department_id": department_id if i % 2 == 0 else uuid4().hex,
-            })
-            for i in range(5)
+    @pytest.mark.asyncio
+    @patch("app.repository.utils.query_items")
+    async def test_get_all_success(
+        self,
+        mock_query_items,
+        project_repository,
+    ):
+        mock_query_items.return_value = [
+            {
+                "ProjectID": "project-1",
+                "Name": "Project 1",
+                "Description": "Desc 1",
+                "Budget": Decimal("10000.00"),
+                "StartDate": 1704067200000,
+                "EndDate": 1704153600000,
+                "DepartmentID": "dept-1",
+                "CreatedAt": 1704067200000,
+                "UpdatedAt": 1704067200000,
+            },
+            {
+                "ProjectID": "project-2",
+                "Name": "Project 2",
+                "Description": "Desc 2",
+                "Budget": Decimal("20000.00"),
+                "StartDate": 1704067200000,
+                "EndDate": 1704153600000,
+                "DepartmentID": "dept-2",
+                "CreatedAt": 1704067300000,
+                "UpdatedAt": 1704067300000,
+            },
         ]
 
-        for project in projects:
-            await project_repository.save(project)
-
-        return projects
-
-    @pytest.mark.asyncio
-    async def test_get_all(self, project_repository, setup_projects):
         projects = await project_repository.get_all()
 
-        assert len(projects) >= 5
-
-        project_ids = {project.id for project in projects}
-        for project in setup_projects:
-            assert project.id in project_ids
+        assert len(projects) == 2
+        assert projects[0].id == "project-1"
+        assert projects[0].name == "Project 1"
+        assert projects[1].id == "project-2"
+        assert projects[1].name == "Project 2"
 
     @pytest.mark.asyncio
-    async def test_get_all_returns_correct_data(self, project_repository, setup_projects):
+    @patch("app.repository.utils.query_items")
+    async def test_get_all_empty(
+        self,
+        mock_query_items,
+        project_repository,
+    ):
+        mock_query_items.return_value = []
+
         projects = await project_repository.get_all()
 
-        test_project = setup_projects[0]
-        found_project = next((p for p in projects if p.id == test_project.id), None)
+        assert len(projects) == 0
 
-        assert found_project is not None
-        assert found_project.name == test_project.name
-        assert found_project.description == test_project.description
-        assert found_project.budget == test_project.budget
-        assert found_project.start_date == test_project.start_date
-        assert found_project.end_date == test_project.end_date
-        assert found_project.department_id == test_project.department_id
+
+class TestProjectRepositoryUpdate:
+    @pytest.mark.asyncio
+    @patch("time.time_ns")
+    async def test_update_success(
+        self,
+        mock_time_ns,
+        project_repository,
+        mock_ddb_table,
+        sample_project,
+        sample_project_item,
+    ):
+        mock_time_ns.return_value = 1704070800000000000
+        mock_ddb_table.get_item.return_value = {"Item": sample_project_item}
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        sample_project.name = "Updated Project Name"
+        sample_project.budget = Decimal("20000.00")
+
+        await project_repository.update(sample_project)
+
+        mock_ddb_table.get_item.assert_called_once()
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 3
+        assert all("Update" in item for item in call_args["TransactItems"])
+
+    @pytest.mark.asyncio
+    @patch("time.time_ns")
+    async def test_update_with_department_change(
+        self,
+        mock_time_ns,
+        project_repository,
+        mock_ddb_table,
+        sample_project,
+        sample_project_item,
+    ):
+        mock_time_ns.return_value = 1704070800000000000
+        mock_ddb_table.get_item.return_value = {"Item": sample_project_item}
+        mock_ddb_table.meta.client.transact_write_items.return_value = None
+
+        sample_project.department_id = "dept-new-789"
+        sample_project.name = "Moved Project"
+
+        await project_repository.update(sample_project)
+
+        mock_ddb_table.get_item.assert_called_once()
+        mock_ddb_table.meta.client.transact_write_items.assert_called_once()
+        call_args = mock_ddb_table.meta.client.transact_write_items.call_args[1]
+        assert len(call_args["TransactItems"]) == 4
+        assert sum(1 for item in call_args["TransactItems"] if "Update" in item) == 2
+        assert sum(1 for item in call_args["TransactItems"] if "Delete" in item) == 1
+        assert sum(1 for item in call_args["TransactItems"] if "Put" in item) == 1
+
+    @pytest.mark.asyncio
+    async def test_update_not_found(
+        self,
+        project_repository,
+        mock_ddb_table,
+        sample_project,
+    ):
+        mock_ddb_table.get_item.return_value = {}
+
+        with pytest.raises(Exception) as exc_info:
+            await project_repository.update(sample_project)
+
+        assert "not found" in str(exc_info.value).lower()

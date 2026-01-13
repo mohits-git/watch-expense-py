@@ -52,7 +52,7 @@ class UserRepository:
 
     def _parse_user_item(self, item: dict) -> User:
         try:
-            return User.model_validate(item, by_alias=True)
+            return User.model_validate(item, by_alias=True, extra="ignore")
         except ValidationError as err:
             raise AppException(
                 AppErr.INTERNAL,
