@@ -41,6 +41,7 @@ class AppErr(enum.IntEnum):
     UNAUTHORIZED_IMAGE_ACCESS = 8007
     # bcrypt
     PASSWORD_TOO_LONG = 9001
+    EMPTY_PASSWORD = 9002
     # JWT token errors
     TOKEN_EXPIRED = 10001
     TOKEN_INVALID_SIGNATURE = 10002

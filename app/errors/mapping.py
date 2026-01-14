@@ -37,7 +37,8 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.IMAGE_NOT_FOUND: (404, "Image not found"),
     AppErr.UNAUTHORIZED_IMAGE_ACCESS: (401, "Unauthorized image access"),
 
-    AppErr.PASSWORD_TOO_LONG: (400, "Password is too long"),
+    AppErr.PASSWORD_TOO_LONG: (400, "Password is too long, must be less than 72 characters."),
+    AppErr.EMPTY_PASSWORD: (400, "Empty passwords not allowed"),
 
     AppErr.TOKEN_EXPIRED: (401, "Token has expired"),
     AppErr.TOKEN_INVALID_SIGNATURE: (401, "Invalid token signature"),

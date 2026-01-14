@@ -8,6 +8,8 @@ class BcryptPasswordHasher:
         self._cost = cost
 
     def hash_password(self, password: str) -> str:
+        if not password or password == "":
+            raise AppException(AppErr.EMPTY_PASSWORD)
         try:
             return bcrypt.hashpw(
                 password.encode('utf-8'),
