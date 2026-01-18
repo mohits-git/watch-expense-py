@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates the storage infra for watch-expense-api
+
+Parameters:
+  WatchExpenseBucketName:
+    Type: String
+    Description: S3 Bucket Name
+    Default: watch-expense-py-bucket
+  WatchExpenseTableName:
+    Type: String
+    Description: DynamoDB Table Name
+    Default: watch-expense-py-table
+
+Resources:
+  WatchExpenseS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref WatchExpenseBucketName
+
+  WatchExpenseTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref WatchExpenseTableName
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 25
+        WriteCapacityUnits: 25
+
+Outputs:
+  WatchExpenseBucketName:
+    Description: Name of the S3 Bucket
+    Value: !Ref WatchExpenseS3Bucket
+
+  WatchExpenseTableName:
+    Description: Name of the DynamoDB Table
+    Value: !Ref WatchExpenseTable
+
+  WatchExpenseTableArn:
+    Description: ARN of the DynamoDB Table
+    Value: !GetAtt WatchExpenseTable.Arn

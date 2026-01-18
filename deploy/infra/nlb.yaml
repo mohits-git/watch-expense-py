@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates the nlb infra for watch-expense-api
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id where ECS cluster and service will be deployed
+
+  PrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: WatchExpense private subnets
+
+  WatchExpenseLBSecurityGroupId:
+    Type: String
+    Description: Security Group ID of the ALB for WatchExpense Application
+
+Resources:
+  WatchExpenseNLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: watch-expense-nlb
+      Subnets: !Ref PrivateSubnets
+      Scheme: internal
+      Type: network
+      SecurityGroups:
+        - !Ref WatchExpenseLBSecurityGroupId
+
+  WatchExpenseNLBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref WatchExpenseNLB
+      Port: 80
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WatchExpenseTargetGroup
+
+  WatchExpenseTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: watch-expense-nlb-target-group
+      Port: 8000
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckProtocol: TCP
+      HealthCheckPort: "8000"
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 2
+
+  WatchExpenseVPCLink:
+    Type: AWS::ApiGatewayV2::VpcLink
+    Properties:
+      Name: watch-expense-nlb-vpc-link
+      SubnetIds: !Ref PrivateSubnets
+
+Outputs:
+  WatchExpenseTargetGroupArn:
+    Description: ARN of the WatchExpense Target Group
+    Value: !Ref WatchExpenseTargetGroup
+
+  WatchExpenseTargetGroupName:
+    Description: Name of the WatchExpense Target Group
+    Value: !GetAtt WatchExpenseTargetGroup.TargetGroupFullName
+
+  WatchExpenseLoadBalancerName:
+    Description: Name of the WatchExpense NLB
+    Value: !GetAtt WatchExpenseNLB.LoadBalancerFullName
+
+  WatchExpenseLoadBalancerArn:
+    Description: ARN of the WatchExpense NLB
+    Value: !Ref WatchExpenseNLB
+
+  WatchExpenseVPCLinkId:
+    Description: VPC Link Id for the NLB
+    Value: !Ref WatchExpenseVPCLink
+
+  WatchExpenseLoadBalancerListenerArn:
+    Description: Load Balancer Listener ARN for the WatchExpense NLB
+    Value: !Ref WatchExpenseNLBListener

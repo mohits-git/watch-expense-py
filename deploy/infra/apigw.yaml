@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates the api gw infra for watch-expense-api
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id where ECS cluster and service will be deployed
+
+  WatchExpenseLoadBalancerListenerArn:
+    Type: String
+    Description: ARN of the Load Balancer Listner for WatchExpense Application
+
+  WatchExpenseVPCLinkId:
+    Type: String
+    Description: VPC Link Id for the NLB
+
+  HostedZoneId:
+    Type: String
+    Description: Route53 hosted zone id
+    Default: Z10038311RTI4QU4LIGAH
+
+  ApiDomain:
+    Type: String
+    Description: e.g. api.watchexpense.mohits.me
+    Default: api.watchexpense.mohits.me
+
+  SSLCertificateArn:
+    Type: String
+    Description: SSL certificate for the api domain
+    Default: arn:aws:acm:ap-south-1:873335417993:certificate/deea0830-e20f-4f41-841c-30b801e60e01
+
+Resources:
+  WatchExpenseApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: watch-expense-api
+      ProtocolType: HTTP
+
+  WatchExpenseApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WatchExpenseApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !Ref WatchExpenseLoadBalancerListenerArn
+      ConnectionType: VPC_LINK
+      ConnectionId: !Ref WatchExpenseVPCLinkId
+      PayloadFormatVersion: '1.0'
+
+  WatchExpenseApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WatchExpenseApi
+      RouteKey: 'ANY /{proxy+}'
+      Target: !Sub 'integrations/${WatchExpenseApiIntegration}'
+
+  WatchExpenseApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WatchExpenseApi
+      StageName: 'prod'
+      AutoDeploy: true
+
+  WatchExpenseApiDomainName:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Ref ApiDomain
+      DomainNameConfigurations:
+        - CertificateArn: !Ref SSLCertificateArn
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+
+  WatchExpenseApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      ApiId: !Ref WatchExpenseApi
+      DomainName: !Ref WatchExpenseApiDomainName
+      Stage: 'prod'
+
+  WatchExpenseApiDomainRecord:
+    Type: AWS::Route53::RecordSet
+    DependsOn: WatchExpenseApiDomainName
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref ApiDomain
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt WatchExpenseApiDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt WatchExpenseApiDomainName.RegionalHostedZoneId
+
+Outputs:
+  WatchExpenseApiEndpoint:
+    Description: Endpoint URL of the WatchExpense API
+    Value: !Sub 'https://${ApiDomain}'

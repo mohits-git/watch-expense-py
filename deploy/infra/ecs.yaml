@@ -1,0 +1,200 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates the ecs infra for watch-expense-api
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id where ECS cluster and service will be deployed
+
+  PrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets where ECS tasks will be deployed
+
+  DesiredTaskCount:
+    Type: Number
+    Description: Desired number of ECS tasks to run
+    Default: 1
+
+  WatchExpenseBucketName:
+    Type: String
+    Description: S3 Bucket name for WatchExpense Application
+
+  WatchExpenseTableName:
+    Type: String
+    Description: DynamoDB Table name for WatchExpense Application
+
+  WatchExpenseTargetGroupArn:
+    Type: String
+    Description: Arn of the ALB Target Group for WatchExpense Application
+
+  WatchExpenseTargetGroupName:
+    Type: String
+    Description: Name of the ALB Target Group for WatchExpense Application
+
+  WatchExpenseLoadBalancerName:
+    Type: String
+    Description: Name of the ALB for WatchExpense Application
+
+  WatchExpenseECSTaskExecutionRoleArn:
+    Type: String
+    Description: ARN of the ECS Task Execution Role for WatchExpense Application
+
+  WatchExpenseECSTaskRoleArn:
+    Type: String
+    Description: ARN of the ECS Task Role for WatchExpense Application
+
+  WatchExpenseECSSecurityGroupId:
+    Type: String
+    Description: Security Group ID of the ECS for WatchExpense Application
+
+  WatchExpenseSecretsArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret for WatchExpense Application
+
+  ContainerImageURI:
+    Type: String
+    Description: URI of the container image for WatchExpense Application
+
+Resources:
+  WatchExpenseECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: watch-expense-py-cluster
+      CapacityProviders:
+        - FARGATE
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+
+  WatchExpenseLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/watch-expense-py
+      RetentionInDays: 7
+
+  WatchExpenseTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: watch-expense-task
+      Cpu: '1024'
+      Memory: '2048'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ExecutionRoleArn: !Ref WatchExpenseECSTaskExecutionRoleArn
+      TaskRoleArn: !Ref WatchExpenseECSTaskRoleArn
+      ContainerDefinitions:
+        - Name: watch-expense-py-backend-container
+          Essential: true
+          Image: !Ref ContainerImageURI
+          PortMappings:
+            - ContainerPort: 8000
+              Protocol: tcp
+          HealthCheck:
+            Command: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+            Interval: 30
+            Retries: 3
+            StartPeriod: 60
+            Timeout: 10
+          Environment:
+            - Name: ENVIRONMENT
+              Value: production
+            - Name: AWS_REGION
+              Value: !Ref "AWS::Region"
+            - Name: DYNAMODB_TABLE
+              Value: !Ref WatchExpenseTableName
+            - Name: S3_BUCKET_NAME
+              Value: !Ref WatchExpenseBucketName
+            - Name: JWT_AUDIENCE
+              Value: http://api.watchexpense.mohits.me
+            - Name: JWT_ISSUER
+              Value: http://api.watchexpense.mohits.me
+          Secrets:
+            - Name: JWT_SECRET
+              ValueFrom: !Sub "${WatchExpenseSecretsArn}:JWT_SECRET::"
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref WatchExpenseLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: api
+
+  WatchExpenseECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref WatchExpenseECSCluster
+      ServiceName: watch-expense-py-service
+      TaskDefinition: !Ref WatchExpenseTaskDefinition
+      LaunchType: FARGATE
+      SchedulingStrategy: REPLICA
+      DesiredCount: !Ref DesiredTaskCount
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref WatchExpenseECSSecurityGroupId
+          Subnets: !Ref PrivateSubnets
+      LoadBalancers:
+        - ContainerName: watch-expense-py-backend-container
+          ContainerPort: 8000
+          TargetGroupArn: !Ref WatchExpenseTargetGroupArn
+
+  WatchExpenseECSScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: WatchExpenseECSService
+    Properties:
+      MaxCapacity: 3
+      MinCapacity: 0
+      ResourceId: !Sub
+        - service/${ClusterName}/${ServiceName}
+        - ClusterName: !Ref WatchExpenseECSCluster
+          ServiceName: !GetAtt WatchExpenseECSService.Name
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  WatchExpenseECSServiceScalingPolicyCPU:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: WEECSCPUScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref WatchExpenseECSScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 60.0
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleOutCooldown: 60
+        ScaleInCooldown: 60
+
+  WatchExpenseECSServiceScalingPolicyMemory:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: WEECSMemoryScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref WatchExpenseECSScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 70.0
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageMemoryUtilization
+        ScaleOutCooldown: 60
+        ScaleInCooldown: 300
+
+
+  # WatchExpenseECSServiceScalingPolicy:
+  #   Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  #   Properties:
+  #     PolicyName: WatchExpenseALBRequestScalingPolicy
+  #     PolicyType: TargetTrackingScaling
+  #     ScalingTargetId: !Ref WatchExpenseECSScalableTarget
+  #     TargetTrackingScalingPolicyConfiguration:
+  #       TargetValue: 50.0
+  #       PredefinedMetricSpecification:
+  #         PredefinedMetricType: ALBRequestCountPerTarget
+  #         ResourceLabel: !Sub
+  #           - ${LoadBalancerName}/${TargetGroupName}
+  #           - LoadBalancerName: !Ref WatchExpenseLoadBalancerName
+  #             TargetGroupName: !Ref WatchExpenseTargetGroupName
+  #       ScaleInCooldown: 300
+  #       ScaleOutCooldown: 300

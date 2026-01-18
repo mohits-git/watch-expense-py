@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates the networking infra for watch-expense-api
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id where ECS cluster and service will be deployed
+
+  CidrBlock:
+    Type: String
+    Description: CIDR Block of the VPC
+
+  PublicSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: WatchExpense public subnets
+
+  PrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: WatchExpense private subnets
+
+  PrivateRouteTableIDs:
+    Type: List<String>
+    Description: Private Route Table IDs
+
+  PublicRouteTableID:
+    Type: String
+    Description: Public Route Table ID
+
+Resources:
+  EndpointSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Security Group for VPC Endpoints'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref CidrBlock
+      Tags:
+        - Key: Name
+          Value: watch-expense-vpc-endpoint-sg
+
+  S3GatewayEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcEndpointType: 'Gateway'
+      VpcId: !Ref VpcId
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      RouteTableIds: !Ref PrivateRouteTableIDs
+
+  DynamoDbGatewayEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcEndpointType: 'Gateway'
+      VpcId: !Ref VpcId
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.dynamodb'
+      RouteTableIds: !Ref PrivateRouteTableIDs
+
+  CloudWatchLogsInterfaceEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref VpcId
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      PrivateDnsEnabled: true
+      SubnetIds: !Ref PrivateSubnets
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  ECRApiInterfaceEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref VpcId
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      PrivateDnsEnabled: true
+      SubnetIds: !Ref PrivateSubnets
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  ECRDockerInterfaceEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref VpcId
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      PrivateDnsEnabled: true
+      SubnetIds: !Ref PrivateSubnets
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  SecretsManagerInterfaceEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref VpcId
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      PrivateDnsEnabled: true
+      SubnetIds: !Ref PrivateSubnets
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+Outputs:
+  EndpointSecurityGroupId:
+    Description: Security Group ID for VPC Endpoints
+    Value: !Ref EndpointSecurityGroup

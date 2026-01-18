@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM Policies for WatchExpense Application
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC Id where ECS cluster and service will be deployed
+  WatchExpenseSecretsArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret for WatchExpense Application
+  WatchExpenseTableArn:
+    Type: String
+    Description: DynamoDB Table Name for WatchExpense Application
+  WatchExpenseBucketName:
+    Type: String
+    Description: S3 Bucket Name for WatchExpense Application
+
+Resources:
+  WatchExpenseDynamoDBAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: WatchExpensePy-DynamoDB-Access-Policy
+      Description: Provides read/write access to WatchExpense DynamoDB table
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:PutItem'
+              - 'dynamodb:GetItem'
+              - 'dynamodb:UpdateItem'
+              - 'dynamodb:DeleteItem'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+            Resource:
+              - !Ref WatchExpenseTableArn
+
+  WatchExpenseS3AccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: WatchExpensePy-S3-Access-Policy
+      Description: Provides read/write access to WatchExpense S3 bucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub 'arn:aws:s3:::${WatchExpenseBucketName}'
+              - !Sub 'arn:aws:s3:::${WatchExpenseBucketName}/*'
+
+  WatchExpenseSecretsAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: secretsmanager:GetSecretValue
+            Resource: !Ref WatchExpenseSecretsArn
+
+  WatchExpenseECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - !Ref WatchExpenseSecretsAccessPolicy
+      Path: /
+      RoleName: WatchExpenseECSTaskExecutionRole
+
+  WatchExpenseECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref WatchExpenseDynamoDBAccessPolicy
+        - !Ref WatchExpenseS3AccessPolicy
+
+  WatchExpenseLBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow internet to ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  WatchExpenseECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Only ALB can access ECS
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref WatchExpenseLBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  WatchExpenseECSTaskExecutionRoleArn:
+    Description: ARN of the WatchExpense ECS Task Execution Role
+    Value: !GetAtt WatchExpenseECSTaskExecutionRole.Arn
+
+  WatchExpenseECSTaskRoleArn:
+    Description: ARN of the WatchExpense ECS Task Role
+    Value: !GetAtt WatchExpenseECSTaskRole.Arn
+
+  WatchExpenseLBSecurityGroupId:
+    Description: Security Group ID for WatchExpense ALB
+    Value: !Ref WatchExpenseLBSecurityGroup
+
+  WatchExpenseECSSecurityGroupId:
+    Description: Security Group ID for WatchExpense ECS
+    Value: !Ref WatchExpenseECSSecurityGroup

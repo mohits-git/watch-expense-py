@@ -1,0 +1,222 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates the networking infra for watch-expense-api
+
+Parameters:
+  Region:
+    Type: String
+    Description: AWS Region to deploy the resources
+
+  CidrBlock:
+    Type: String
+    Description: CIDR Block of the VPC
+
+Resources:
+  WatchExpenseVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+       - Key: Name
+         Value: Custom VPC for WatchExpense Infra
+
+  WatchExpensePublicSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.1.0/24
+
+  WatchExpensePublicSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.2.0/24
+
+  WatchExpenseInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+       - Key: Name
+         Value: watch-expense-igw
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      InternetGatewayId: !Ref WatchExpenseInternetGateway
+
+  WatchExpensePublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      Tags:
+       - Key: Name
+         Value: watch-expense-public-rt
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref WatchExpensePublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref WatchExpenseInternetGateway
+
+  PublicSubnetAZ1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WatchExpensePublicSubnetAZ1
+      RouteTableId: !Ref WatchExpensePublicRouteTable
+
+  PublicSubnetAZ2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WatchExpensePublicSubnetAZ2
+      RouteTableId: !Ref WatchExpensePublicRouteTable
+
+
+  # private subnets, NAT Gateway, and other networking components can be added here as needed
+  WatchExpensePrivateSubnetAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.3.0/24
+
+  WatchExpensePrivateSubnetAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.4.0/24
+
+  WatchExpenseNATGatewayEIP1:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  WatchExpenseNATGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt WatchExpenseNATGatewayEIP1.AllocationId
+      SubnetId: !Ref WatchExpensePublicSubnetAZ1
+      Tags:
+       - Key: Name
+         Value: watch-expense-nat-gw-1
+
+  WatchExpenseNATGatewayEIP2:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  WatchExpenseNATGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt WatchExpenseNATGatewayEIP2.AllocationId
+      SubnetId: !Ref WatchExpensePublicSubnetAZ2
+      Tags:
+       - Key: Name
+         Value: watch-expense-nat-gw-2
+
+  PrivateRouteTableAZ1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      Tags:
+       - Key: Name
+         Value: watch-expense-private-rt-az1
+
+  PrivateRouteTableAZ2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref WatchExpenseVPC
+      Tags:
+       - Key: Name
+         Value: watch-expense-private-rt-az2
+
+  PrivateSubnetAZ1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WatchExpensePrivateSubnetAZ1
+      RouteTableId: !Ref PrivateRouteTableAZ1
+
+  PrivateSubnetAZ2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref WatchExpensePrivateSubnetAZ2
+      RouteTableId: !Ref PrivateRouteTableAZ2
+
+  PrivateRouteAZ1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableAZ1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref WatchExpenseNATGateway1
+
+  PrivateRouteAZ2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableAZ2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref WatchExpenseNATGateway2
+
+Outputs:
+  VpcId:
+    Description: VPC Id
+    Value: !Ref WatchExpenseVPC
+    Export:
+      Name: watch-expense-vpc-id
+
+  PublicSubnets:
+    Description: Public Subnet IDs
+    Value:
+      Fn::Join:
+        - ","
+        -
+          - !Ref WatchExpensePublicSubnetAZ1
+          - !Ref WatchExpensePublicSubnetAZ2
+    Export:
+      Name: watch-expense-public-subnet-ids
+
+  PrivateSubnets:
+    Description: Private Subnet IDs
+    Value:
+      Fn::Join:
+        - ","
+        -
+          - !Ref WatchExpensePrivateSubnetAZ1
+          - !Ref WatchExpensePrivateSubnetAZ2
+    Export:
+      Name: watch-expense-private-subnet-ids
+
+  PrivateRouteTableIDs:
+    Description: Private Route Table IDs
+    Value:
+      Fn::Join:
+        - ","
+        -
+          - !Ref PrivateRouteTableAZ1
+          - !Ref PrivateRouteTableAZ2
+    Export:
+      Name: watch-expense-private-route-table-ids
+
+  PublicRouteTableID:
+    Description: Public Route Table ID
+    Value: !Ref WatchExpensePublicRouteTable
+    Export:
+      Name: watch-expense-public-route-table-id
