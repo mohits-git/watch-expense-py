@@ -46,6 +46,10 @@ Resources:
       ConnectionType: VPC_LINK
       ConnectionId: !Ref WatchExpenseVPCLinkId
       PayloadFormatVersion: '1.0'
+      RequestParameters:
+        'overwrite:header.api-x-forwarded-for': '$context.identity.sourceIp'
+        'overwrite:header.api-x-forwarded-proto': 'https'
+        'overwrite:header.api-x-forwarded-host': '$context.domainName'
 
   WatchExpenseApiRoute:
     Type: AWS::ApiGatewayV2::Route
