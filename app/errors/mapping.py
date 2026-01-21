@@ -45,4 +45,6 @@ ERROR_MAP: dict[AppErr, tuple[int, str]] = {
     AppErr.TOKEN_INVALID_AUDIENCE: (401, "Invalid token audience"),
     AppErr.TOKEN_INVALID_ISSUER: (401, "Invalid token issuer"),
     AppErr.TOKEN_DECODE_ERROR: (401, "Invalid Token"),
+
+    AppErr.SQS_SEND_MESSAGE_FAILED: (500, "Failed to send message to SQS"),
 }

@@ -3,6 +3,7 @@ from fastapi import FastAPI
 import boto3
 from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
 from mypy_boto3_s3 import S3Client
+from mypy_boto3_sqs import SQSClient
 
 from app.config import load_config
 
@@ -24,6 +25,7 @@ from app.services.advance import AdvanceService
 from app.infra.bcrypt_password_hasher import BcryptPasswordHasher
 from app.infra.jwt_token_provider import JWTTokenProvider
 from app.infra.s3_image_store import S3ImageStore
+from app.infra.email_notification_service import EmailNotificationService
 
 
 @asynccontextmanager
@@ -43,6 +45,10 @@ async def lifespan(app: FastAPI):
     bucket_name = config.s3_bucket_name
     s3_client: S3Client = session.client("s3")
 
+    # sqs
+    queue_url = config.email_queue_url
+    sqs_client: SQSClient = session.client("sqs")
+
     # repos
     user_repo = UserRepository(ddb_table, table_name)
     project_repo = ProjectRepository(ddb_table, table_name)
@@ -59,16 +65,20 @@ async def lifespan(app: FastAPI):
     )
     password_hasher = BcryptPasswordHasher()
     image_store = S3ImageStore(bucket_name, s3_client)
+    email_notification_service = EmailNotificationService(
+        sqs_client, queue_url
+    )
 
     # services
     auth_service = AuthService(
         user_repo, token_provider, password_hasher)
     user_service = UserService(
-        password_hasher, user_repo, project_repo)
+        password_hasher, user_repo, project_repo, email_notification_service)
     project_service = ProjectService(project_repo)
     department_service = DepartmentService(department_repo)
-    expense_service = ExpenseService(expense_repo, advance_repo)
-    advance_service = AdvanceService(advance_repo)
+    expense_service = ExpenseService(
+        expense_repo, advance_repo, user_repo, email_notification_service)
+    advance_service = AdvanceService(advance_repo, user_repo, email_notification_service)
     image_service = ImageService(image_metadata_repo, image_store)
 
     # add to fastapi state

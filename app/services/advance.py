@@ -4,15 +4,21 @@ import asyncio
 from uuid import uuid4
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
-from app.interfaces import AdvanceRepository
+from app.interfaces import AdvanceRepository, UserRepository, NotificationService
 from app.models.advance import Advance, AdvanceSummary, AdvancesFilterOptions
 from app.models.expense import RequestStatus
+from app.models.notification import EventType, Notification
 from app.models.user import UserClaims, UserRole
 
 
 class AdvanceService:
-    def __init__(self, advance_repo: AdvanceRepository):
+    def __init__(self,
+                 advance_repo: AdvanceRepository,
+                 user_repo: UserRepository,
+                 notification_service: NotificationService):
         self.advance_repo = advance_repo
+        self.notification_service = notification_service
+        self.user_repo = user_repo
 
     async def get_advance_by_id(self, curr_user: UserClaims, advance_id: str) -> Advance:
         advance = await self.advance_repo.get(advance_id)
@@ -50,20 +56,46 @@ class AdvanceService:
         advances, total_count = await self.advance_repo.get_all(filter_options)
         return advances, total_count
 
+    async def _send_status_update_notification(self, advance: Advance):
+        user = await self.user_repo.get(advance.user_id)
+        if not user:
+            return
+
+        notification = Notification(
+            event_type=EventType.ADVANCE_APPROVED,
+            user=Notification.User(
+                name=user.name,
+                email=user.email,
+            ),
+            advance=Notification.Advance(
+                advance_id=advance.id,
+                purpose=advance.purpose,
+                amount=advance.amount,
+            ), expense=None)
+
+        if advance.status == RequestStatus.Rejected:
+            notification.event_type = EventType.ADVANCE_REJECTED
+
+        await self.notification_service.send_notification(notification)
+
     async def update_advance_status(
-        self, curr_user_id: str, advance_id: str, status: RequestStatus
+        self, curr_user: UserClaims, advance_id: str, status: RequestStatus
     ) -> None:
         existing_advance = await self.advance_repo.get(advance_id)
         if not existing_advance:
-            raise AppException(AppErr.NOT_FOUND)
+            raise AppException(AppErr.NOT_FOUND, "Advance not found")
+
         existing_advance.status = status
         if status == RequestStatus.Approved:
-            existing_advance.approved_by = curr_user_id
+            existing_advance.approved_by = curr_user.user_id
             existing_advance.approved_at = int(time.time())
         if status == RequestStatus.Reviewed:
-            existing_advance.reviewed_by = curr_user_id
+            existing_advance.reviewed_by = curr_user.user_id
             existing_advance.reviewed_at = int(time.time())
+
         await self.advance_repo.update(existing_advance)
+
+        await self._send_status_update_notification(existing_advance)
 
     async def get_advance_summary(self, curr_user: UserClaims) -> AdvanceSummary:
         user_id = ""

@@ -127,7 +127,7 @@ async def handle_update_status(
         data: UpdateAdvanceStatusRequest,
         advance_service: AdvanceServiceInstance,
 ):
-    await advance_service.update_advance_status(curr_user.user_id, advance_id, data.status)
+    await advance_service.update_advance_status(curr_user, advance_id, data.status)
     return BaseResponse(
         status=status.HTTP_200_OK,
         message="Advance status updated successfully",

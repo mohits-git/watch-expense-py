@@ -1,7 +1,14 @@
 import uuid
+
 from app.errors.app_exception import AppException
 from app.errors.codes import AppErr
-from app.interfaces import PasswordHasher, UserRepository, ProjectRepository
+from app.interfaces import (
+    PasswordHasher,
+    UserRepository,
+    ProjectRepository,
+    NotificationService,
+)
+from app.models.notification import EventType, Notification
 from app.models.user import User
 
 
@@ -11,18 +18,31 @@ class UserService:
         password_hasher: PasswordHasher,
         user_repo: UserRepository,
         project_repo: ProjectRepository,
+        notification_service: NotificationService,
     ):
         self.password_hasher = password_hasher
         self.user_repo = user_repo
         self.project_repo = project_repo
+        self.notification_service = notification_service
 
     async def create_user(self, user: User) -> str:
         if not user.password:
             raise AppException(AppErr.CREATE_USER_PASSWORD_REQUIRED)
+
         hashed_password = self.password_hasher.hash_password(user.password)
         user.password = hashed_password
         user.id = uuid.uuid4().hex
+
         await self.user_repo.save(user)
+
+        notification = Notification(
+            event_type=EventType.USER_WELCOME,
+            user=Notification.User(
+                name=user.name,
+                email=user.email,
+            ), expense=None, advance=None)
+        await self.notification_service.send_notification(notification)
+
         return user.id
 
     async def update_user(self, user: User) -> None:

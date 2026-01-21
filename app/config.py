@@ -12,6 +12,7 @@ class Config:
     jwt_issuer: str = ""
     jwt_audience: str = ""
     s3_bucket_name: str = ""
+    email_queue_url: str = ""
 
 
 _config: Config | None = None
@@ -29,5 +30,6 @@ def load_config() -> Config:
             jwt_issuer=os.getenv("JWT_ISSUER") or "https://api.watchexpense.mohits.me",
             jwt_audience=os.getenv("JWT_AUDIENCE") or "https://api.watchexpense.mohits.me",
             s3_bucket_name=os.getenv("S3_BUCKET_NAME") or "watch-expense-py-bucket",
+            email_queue_url=os.getenv("EMAIL_QUEUE_URL") or "https://sqs.ap-south-1.amazonaws.com/873335417993/watch-expense-email-queue",
         )
     return _config

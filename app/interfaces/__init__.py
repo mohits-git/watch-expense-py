@@ -11,3 +11,4 @@ from .project_repository import ProjectRepository
 from .user_repository import UserRepository
 from .image_metadata_repository import ImageMetadataRepository
 from .image_store import ImageStore
+from .notification_service import NotificationService

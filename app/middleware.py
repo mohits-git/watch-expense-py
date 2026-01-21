@@ -56,5 +56,6 @@ def register_middlewares(app: FastAPI):
         allow_headers=["*"],
         allow_origins=[
             "https://watchexpense.mohits.me",
+            "http://localhost:4200"
         ],
     )

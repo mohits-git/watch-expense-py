@@ -130,7 +130,7 @@ async def handle_update_status(
         data: UpdateExpenseStatusRequest,
         expense_service: ExpenseServiceInstance,
 ):
-    await expense_service.update_expense_status(curr_user.user_id, expense_id, data.status)
+    await expense_service.update_expense_status(curr_user, expense_id, data.status)
     return BaseResponse(
         status=status.HTTP_200_OK,
         message="Expense status updated successfully",
