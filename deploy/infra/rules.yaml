@@ -14,6 +14,14 @@ Parameters:
   WatchExpenseBucketName:
     Type: String
     Description: S3 Bucket Name for WatchExpense Application
+  WatchExpenseEmailQueueUrl:
+    Type: String
+    Description: SQS Email Worker Queue for WatchExpense
+    Default: https://sqs.ap-south-1.amazonaws.com/873335417993/watch-expense-email-queue
+  WatchExpenseEmailQueueArn:
+    Type: String
+    Description: SQS Email Worker Queue ARN for WatchExpense
+    Default: arn:aws:sqs:ap-south-1:873335417993:watch-expense-email-queue
 
 Resources:
   WatchExpenseDynamoDBAccessPolicy:
@@ -63,6 +71,21 @@ Resources:
             Action: secretsmanager:GetSecretValue
             Resource: !Ref WatchExpenseSecretsArn
 
+  WatchExpenseSQSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: WatchExpensePy-SQS-Access-Policy
+      Description: Provides access to WatchExpense SQS Email Queue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'sqs:SendMessage'
+              - 'sqs:GetQueueAttributes'
+            Resource:
+              - !Ref WatchExpenseEmailQueueArn
+
   WatchExpenseECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -96,6 +119,7 @@ Resources:
       ManagedPolicyArns:
         - !Ref WatchExpenseDynamoDBAccessPolicy
         - !Ref WatchExpenseS3AccessPolicy
+        - !Ref WatchExpenseSQSPolicy
 
   WatchExpenseLBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
