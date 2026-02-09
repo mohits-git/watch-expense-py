@@ -45,7 +45,7 @@ def get_outputs(stack_name):
 PARAMETRS = {  # with initial default parameters
     "Region": "ap-south-1",
     "CidrBlock": "10.0.0.0/16",
-    "WatchExpenseBucketName": "watch-expense-py-bucket1",
+    "WatchExpenseBucketName": "watch-expense-py-bucket",
     "WatchExpenseTableName": "watch-expense-py-table",
     "HostedZoneId": "Z10038311RTI4QU4LIGAH",
     "ApiDomain": "api.watchexpensepy.mohits.me",

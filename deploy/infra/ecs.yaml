@@ -146,7 +146,7 @@ Resources:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
     DependsOn: WatchExpenseECSService
     Properties:
-      MaxCapacity: 3
+      MaxCapacity: 2
       MinCapacity: 0
       ResourceId: !Sub
         - service/${ClusterName}/${ServiceName}
