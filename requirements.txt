@@ -6,6 +6,8 @@ boto3==1.42.24
 botocore==1.42.24
 certifi==2025.11.12
 click==8.3.1
+complexipy==5.1.0
+coverage==7.13.1
 dnspython==2.8.0
 email-validator==2.3.0
 fastapi==0.128.0
@@ -25,6 +27,7 @@ markupsafe==3.0.3
 mdurl==0.1.2
 mypy-boto3-dynamodb==1.42.3
 mypy-boto3-s3==1.42.21
+mypy-boto3-sqs==1.42.3
 packaging==25.0
 pluggy==1.6.0
 pydantic==2.12.5
@@ -35,6 +38,7 @@ pygments==2.19.2
 pyjwt==2.10.1
 pytest==9.0.2
 pytest-asyncio==1.3.0
+pytest-cov==7.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
 python-multipart==0.0.21
@@ -47,6 +51,7 @@ sentry-sdk==2.48.0
 shellingham==1.5.4
 six==1.17.0
 starlette==0.50.0
+tomli==2.4.0
 typer==0.21.0
 typing-extensions==4.15.0
 typing-inspection==0.4.2
