@@ -1,3 +1,4 @@
+# WARN: this template version is deprecated, use newer templates in ./infra and deployment script `deploy.py`
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Template to create an ECS cluster with Fargate service for watch-expense backend application
 

@@ -1,3 +1,5 @@
+# WARN: this version of deployement is deprecated, use deploy.py
+echo "WARNING: this version of deployement is deprecated, use deploy.py"
 aws cloudformation deploy \
 --capabilities CAPABILITY_NAMED_IAM \
 --stack-name watch-expense-py-stack \
