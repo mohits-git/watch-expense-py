@@ -35,8 +35,8 @@ class AdvanceDTO(BaseModel):
 
 class CreateAdvanceRequest(BaseModel):
     amount: DecimalAsFloat = Field(ge=Decimal(0.0))
-    description: str
-    purpose: str
+    description: str = Field(max_length=1000)
+    purpose: str = Field(max_length=100)
 
 
 class CreateAdvanceResponse(BaseResponse):

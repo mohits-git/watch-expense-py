@@ -24,7 +24,7 @@ class DepartmentDTO(BaseModel):
 
 
 class CreateDepartmentRequest(BaseModel):
-    name: str = Field(alias="name")
+    name: str = Field(alias="name", max_length=100)
     budget: DecimalAsFloat = Field(alias="budget", ge=Decimal(0.0))
 
     model_config = ConfigDict(validate_by_name=True,

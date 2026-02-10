@@ -35,10 +35,10 @@ class GetAllUsersResponse(BaseResponse):
 
 
 class CreateUserRequest(BaseModel):
-    employee_id: str = Field(alias="employeeId")
-    name: str = Field(alias="name")
-    password: str = Field(alias="password")
-    email: EmailStr = Field(alias="email")
+    employee_id: str = Field(alias="employeeId", max_length=20)
+    name: str = Field(alias="name", max_length=100)
+    password: str = Field(alias="password", max_length=72)
+    email: EmailStr = Field(alias="email", max_length=50)
     role: UserRole = Field(alias="role")
     project_id: str = Field(alias="projectId", default="")
     department_id: str = Field(alias="departmentId", default="")
@@ -59,7 +59,7 @@ class CreateUserResponse(BaseResponse):
 
 
 class UpdateUserRequest(CreateUserRequest):
-    password: str = Field(default="")
+    password: str = Field(default="", max_length=72)
 
 
 class GetUserBudgetResponse(BaseResponse):

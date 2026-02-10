@@ -8,8 +8,8 @@ from app.dtos.type import DecimalAsFloat
 
 class ProjectDTO(BaseModel):
     id: str = Field(alias="id")
-    name: str = Field(alias="name")
-    description: str = Field(alias="description")
+    name: str = Field(alias="name", max_length=100)
+    description: str = Field(alias="description", max_length=1000)
     budget: DecimalAsFloat = Field(alias="budget", ge=Decimal(0.0))
     start_date: int = Field(alias="startDate")
     end_date: int = Field(alias="endDate")
@@ -27,8 +27,8 @@ class ProjectDTO(BaseModel):
 
 
 class CreateProjectRequest(BaseModel):
-    name: str = Field(alias="name")
-    description: str = Field(alias="description")
+    name: str = Field(alias="name", max_length=100)
+    description: str = Field(alias="description", max_length=1000)
     budget: DecimalAsFloat = Field(alias="budget", ge=Decimal(0.0))
     start_date: int = Field(alias="startDate")
     end_date: int = Field(alias="endDate")
