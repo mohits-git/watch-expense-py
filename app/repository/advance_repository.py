@@ -149,6 +149,7 @@ class AdvanceRepository:
             query_input: QueryInputTableQueryTypeDef = {
                 "KeyConditionExpression": Key("PK").eq(primary_key["PK"])
                 & Key("SK").begins_with(primary_key["SK"]),
+                "ScanIndexForward": False,
             }
 
             # filter
