@@ -54,7 +54,7 @@ async def handle_create_expense(
     create_expense_request: CreateExpenseRequest,
     expense_service: ExpenseServiceInstance,
 ):
-    expense = Expense(**create_expense_request.model_dump(by_alias=False))
+    expense = Expense(**create_expense_request.model_dump(by_alias=False, exclude_none=True))
     expense_id = await expense_service.create_expense(curr_user, expense)
     return CreateExpenseResponse(
         status=status.HTTP_201_CREATED,
@@ -108,7 +108,7 @@ async def handle_update_expense(
     update_expense_request: UpdateExpenseRequest,
     expense_service: ExpenseServiceInstance,
 ):
-    expense = Expense(**update_expense_request.model_dump(by_alias=False))
+    expense = Expense(**update_expense_request.model_dump(by_alias=False, exclude_none=True))
     expense.id = expense_id
     await expense_service.update_expense(curr_user, expense)
     return BaseResponse(

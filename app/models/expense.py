@@ -14,8 +14,8 @@ class RequestStatus(str, Enum):
 class Bill(BaseModel):
     id: str = Field(alias="BillID", default="")
     amount: Decimal = Field(alias="Amount")
-    description: str = Field(alias="Description")
-    attachment_url: str = Field(alias="AttachmentURL")
+    description: str = Field(alias="Description", default="")
+    attachment_url: str = Field(alias="AttachmentURL", default="")
 
     # pydantic config
     model_config = ConfigDict(validate_by_name=True,

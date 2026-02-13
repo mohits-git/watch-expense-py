@@ -139,7 +139,7 @@ class ExpenseService:
 
         return ExpenseSummary(
             total_expense=Decimal(total),
-            pending_expense=Decimal(approved),
-            reimbursed_expense=Decimal(pending),
+            pending_expense=Decimal(pending),
+            reimbursed_expense=Decimal(approved),
             rejected_expense=Decimal(rejected),
         )

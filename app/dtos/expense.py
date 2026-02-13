@@ -9,8 +9,8 @@ from app.models.expense import RequestStatus
 
 class BillDTO(BaseModel):
     amount: DecimalAsFloat = Field(alias="amount", ge=Decimal(0.0))
-    description: str = Field(alias="description", max_length=1000)
-    attachment_url: str = Field(alias="attachmentUrl", default="")
+    description: str | None = Field(alias="description", default=None, max_length=1000)
+    attachment_url: str | None = Field(alias="attachmentUrl", default=None, max_length=1000)
 
     # pydantic config
     model_config = ConfigDict(validate_by_name=True,
@@ -45,21 +45,9 @@ class ExpenseDTO(BaseModel):
                               extra="ignore")
 
 
-class CreateBillRequest(BaseModel):
-    amount: DecimalAsFloat = Field(ge=Decimal(0.0))
-    description: str = Field(max_length=1000)
-    attachment_url: str = Field(alias="attachmentUrl")
-
-    # pydantic config
-    model_config = ConfigDict(validate_by_name=True,
-                              validate_by_alias=True,
-                              serialize_by_alias=True,
-                              extra="ignore")
-
-
 class CreateExpenseRequest(BaseModel):
     amount: DecimalAsFloat = Field(ge=Decimal(0.0))
-    description: str = Field(max_length=1000)
+    description: str = Field(default="", max_length=1000)
     purpose: str = Field(max_length=50)
     bills: list[BillDTO]
     is_reconciled: bool = Field(alias="isReconciled")
